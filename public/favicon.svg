@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sadguru Coaching Classes">
+  <rect width="64" height="64" rx="14" fill="#284b85"/>
+  <path d="M32 12c2.6 3.2 3.4 6 2.2 8.4-1 2-2.2 3-2.2 5 0-2-1.2-3-2.2-5C28.6 18 29.4 15.2 32 12z" fill="#E0A83C"/>
+  <path d="M26 30h12l2 5H24l2-5zm-3 7h18l2.5 6h-23L23 37z" fill="#E0A83C"/>
+  <path d="M12 26c5-2 10-1.5 13 1v20c-3-2.5-8-3-13-1V26zm40 0c-5-2-10-1.5-13 1v20c3-2.5 8-3 13-1V26z" fill="#fff"/>
+</svg>
