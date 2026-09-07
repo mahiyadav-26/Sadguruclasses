@@ -31,7 +31,9 @@ import { useLessonMarkers } from "../../hooks/useLessonMarkers";
 import { useLessonBookmarks, type Bookmark } from "../../hooks/useLessonBookmarks";
 import BookmarkNoteDialog from "./BookmarkNoteDialog";
 import { DoubleTapRipple, SwipeIndicatorPill, LongPressSpeedBadge } from "./PlayerOverlays";
+import { usePlayerReaderControls } from "../../hooks/usePlayerReaderControls";
 import { toast } from "sonner";
+
 
 // DEV-only logger. A 2-hour viewing session can fire thousands of player
 // lifecycle warns (tap-toggle / immersive-sync / fullscreen-flip). In
@@ -76,7 +78,9 @@ const MahimaGhostPlayer = memo(({
 }: MahimaGhostPlayerProps) => {
   // Player state
   const isPortrait = useOrientation();
+  const { infinityLogo: showInfinityLogo, youtubeMask: showYoutubeMask } = usePlayerReaderControls();
   const [isLoaded, setIsLoaded] = useState(false);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(() => {
@@ -1104,80 +1108,86 @@ const MahimaGhostPlayer = memo(({
           </div>
         </div>
 
-        {/* Bird logo — precisely covers YouTube "More videos" / infinity chip.
-            Lives INSIDE the rotating outer container, so bottom-left stays
-            glued to the same corner of the video content across portrait,
-            landscape CSS-rotation, and native fake-fullscreen. */}
-        <div
-          className="absolute z-[52] pointer-events-none select-none flex items-center justify-center"
-          style={{
-            // Landscape: responsive % sizing matching YouTube ∞ chip (see
-            // docs/audit/2026-07-24-yt-infinity-chip-landscape.md).
-            // Portrait: fixed 34px, tuned offsets. Fake-fullscreen bumps portrait offsets.
-            ...(shouldUseLandscapePortalMask
-              ? {
-                  width: '5.8%',
-                  aspectRatio: '1 / 1',
-                  left: '0.4%',
-                  bottom: '1.6%',
-                  transform: 'translateY(-6px) translateX(18px) scale(0.85)',
-                  transformOrigin: 'center center',
-                }
-              : isFakeFullscreen
-                ? { bottom: '22px', left: '52px' }
-                : { bottom: '18px', left: '44px' }),
-          }}
-        >
-          <img
-            src={birdLogo}
-            alt=""
-            className="rounded-full"
+        {showInfinityLogo && (
+          /* Bird logo — precisely covers YouTube "More videos" / infinity chip.
+             Lives INSIDE the rotating outer container, so bottom-left stays
+             glued to the same corner of the video content across portrait,
+             landscape CSS-rotation, and native fake-fullscreen. */
+          <div
+            className="absolute z-[52] pointer-events-none select-none flex items-center justify-center"
             style={{
+              // Landscape: responsive % sizing matching YouTube ∞ chip (see
+              // docs/audit/2026-07-24-yt-infinity-chip-landscape.md).
+              // Portrait: fixed 34px, tuned offsets. Fake-fullscreen bumps portrait offsets.
               ...(shouldUseLandscapePortalMask
-                ? { width: '100%', height: '100%' }
-                : { width: '34px', height: '34px' }),
-              filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.85))',
-            }}
-            draggable={false}
-          />
-        </div>
-
-        {/* Bottom-right brand mask — covers YouTube white label watermark exactly, untouchable */}
-        <div
-          className="absolute z-[35] select-none flex items-center"
-          style={{
-            right: 52,
-            bottom: 24,
-            height: '28px',
-            paddingLeft: '6px',
-            paddingRight: '10px',
-            background: 'rgba(30,30,30,0.97)',
-            pointerEvents: 'none',
-            gap: '5px',
-            borderRadius: '4px',
-          }}
-        >
-          <img
-            src={bharatBirdLogo}
-            alt=""
-            draggable={false}
-            className="rounded-full"
-            style={{
-              height: '22px',
-              width: '22px',
-            }}
-          />
-          <span
-            className="font-bold tracking-wider whitespace-nowrap uppercase"
-            style={{
-              fontSize: '11px',
-              letterSpacing: '0.08em',
-              color: 'rgba(255,255,255,0.9)',
+                ? {
+                    width: '5.8%',
+                    aspectRatio: '1 / 1',
+                    left: '0.4%',
+                    bottom: '1.6%',
+                    transform: 'translateY(-6px) translateX(18px) scale(0.85)',
+                    transformOrigin: 'center center',
+                  }
+                : isFakeFullscreen
+                  ? { bottom: '22px', left: '52px' }
+                  : { bottom: '18px', left: '44px' }),
             }}
           >
-            Bharat
-          </span>
-        </div>
+            <img
+              src={birdLogo}
+              alt=""
+              className="rounded-full"
+              style={{
+                ...(shouldUseLandscapePortalMask
+                  ? { width: '100%', height: '100%' }
+                  : { width: '34px', height: '34px' }),
+                filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.85))',
+              }}
+              draggable={false}
+            />
+          </div>
+        )}
+
+
+        {showYoutubeMask && (
+          /* Bottom-right brand mask — covers YouTube white label watermark exactly, untouchable */
+          <div
+            className="absolute z-[35] select-none flex items-center"
+            style={{
+              right: 52,
+              bottom: 24,
+              height: '28px',
+              paddingLeft: '6px',
+              paddingRight: '10px',
+              background: 'rgba(30,30,30,0.97)',
+              pointerEvents: 'none',
+              gap: '5px',
+              borderRadius: '4px',
+            }}
+          >
+            <img
+              src={bharatBirdLogo}
+              alt=""
+              draggable={false}
+              className="rounded-full"
+              style={{
+                height: '22px',
+                width: '22px',
+              }}
+            />
+            <span
+              className="font-bold tracking-wider whitespace-nowrap uppercase"
+              style={{
+                fontSize: '11px',
+                letterSpacing: '0.08em',
+                color: 'rgba(255,255,255,0.9)',
+              }}
+            >
+              Bharat
+            </span>
+          </div>
+        )}
+
 
         {/* GHOST OVERLAY — inside the rotating outer container, so all controls rotate correctly with the video. */}
         <div
