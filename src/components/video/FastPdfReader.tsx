@@ -26,9 +26,11 @@ import { openExternal } from "../../lib/native/browser";
 import { requestPdfViaNativeHttp } from "../../lib/nativePdfHttp";
 import { friendlyPdfErrorMessage } from "../../lib/pdfErrorMessage";
 import { supabase } from "@/integrations/supabase/client";
-
+import { usePlayerReaderControls } from "../../hooks/usePlayerReaderControls";
+import ReaderZoomControls from "../library/reader/ReaderZoomControls";
 
 // Guard worker assignment for SSR / non-browser execution.
+
 if (typeof window !== "undefined") {
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
   // Silence noisy "Cannot load system font: TimesNewRomanPSMT" warnings.
@@ -329,7 +331,10 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       return computeFitPageWidth(window.visualViewport?.width ?? window.innerWidth);
     });
 
+    const { readerZoom: showZoomControls } = usePlayerReaderControls();
+
     // ── Pinch-to-zoom (2-finger). No UI controls. Smooth: live CSS transform
+
     // during pinch (no React re-render → no flicker), then commit on release
     // so PDF.js re-rasterises the canvas at the new resolution (crisp, not blurry).
     const ZOOM_KEY = "nb_pdf_zoom";
@@ -345,7 +350,17 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       try { localStorage.setItem(ZOOM_KEY, String(v)); } catch { /* ignore */ }
     }, []);
 
+    const handleZoomBy = useCallback((factor: number) => commitZoom(zoom * factor), [zoom, commitZoom]);
+    const handleFitWidth = useCallback(() => commitZoom(1), [commitZoom]);
+
+    // Admin can disable the zoom buttons. When disabled, force reader back to
+    // 100% so students always open PDFs at fit-width and cannot get stuck zoomed.
+    useEffect(() => {
+      if (!showZoomControls && Math.abs(zoom - 1) > 0.01) commitZoom(1);
+    }, [showZoomControls, zoom, commitZoom]);
+
     const pinchRef = useRef<{ startDist: number; startZoom: number; live: number } | null>(null);
+
     useEffect(() => {
       const el = scrollRef.current;
       const wrap = pagesWrapperRef.current;
@@ -1070,8 +1085,17 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
             </div>
           </Document>
         )}
+        {showZoomControls && (
+          <ReaderZoomControls
+            zoom={zoom}
+            visible={showZoomControls}
+            onZoomBy={handleZoomBy}
+            onFitWidth={handleFitWidth}
+          />
+        )}
       </div>
     );
+
   }
 );
 
