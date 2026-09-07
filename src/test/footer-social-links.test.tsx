@@ -13,7 +13,7 @@ describe("landing footer social links", () => {
 
     expect(screen.getByRole("link", { name: /YouTube/i })).toHaveAttribute(
       "href",
-      "https://youtube.com/@sadgurucoachingclasses",
+      "https://www.youtube.com/channel/UCJig1qwQQN3doNzobNDlB_A",
     );
     expect(screen.getByRole("link", { name: /Telegram/i })).toHaveAttribute(
       "href",
