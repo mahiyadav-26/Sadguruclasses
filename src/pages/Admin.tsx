@@ -29,13 +29,15 @@ import {
   Upload, Users, CheckCircle, XCircle, Clock,
   Trash2, Plus, BookOpen, ExternalLink, ShieldAlert, Search,
   Download, Filter, RefreshCw, Eye, IndianRupee, Loader2, Library, Calendar,
-  GraduationCap, UserCheck, UserX, Radio, ImageIcon, MessageSquare, Monitor, Smartphone, LogOut,
+  GraduationCap, UserCheck, UserX, Radio, ImageIcon, MessageSquare, Monitor, MonitorPlay, Smartphone, LogOut,
   FileText, Link as LinkIcon,
 } from "lucide-react";
 
 import ContentDrillDown from "../components/admin/ContentDrillDown";
 import SocialLinksManager from "../components/admin/SocialLinksManager";
+import PlayerReaderControlsManager from "../components/admin/PlayerReaderControls";
 import HeroBannerManager from "../components/admin/HeroBannerManager";
+
 import LandingCoursesManager from "../components/admin/LandingCoursesManager";
 import TestimonialsManager from "../components/admin/TestimonialsManager";
 import SyllabusManager from "../components/admin/SyllabusManager";
@@ -682,8 +684,10 @@ const Admin = () => {
             <TabsTrigger data-tab="banners" value="banners" className="py-2 min-h-[44px] shrink-0 gap-1"><ImageIcon className="h-4 w-4" />Banners</TabsTrigger>
             <TabsTrigger data-tab="landing-courses" value="landing-courses" className="py-2 min-h-[44px] shrink-0 gap-1"><BookOpen className="h-4 w-4" />Landing</TabsTrigger>
             <TabsTrigger data-tab="testimonials" value="testimonials" className="py-2 min-h-[44px] shrink-0 gap-1"><MessageSquare className="h-4 w-4" />Reviews</TabsTrigger>
-            <TabsTrigger data-tab="social" value="social" className="py-2 min-h-[44px] shrink-0 gap-1"><ExternalLink className="h-4 w-4" />Social</TabsTrigger>
-            <TabsTrigger data-tab="sessions" value="sessions" className="py-2 min-h-[44px] shrink-0 gap-1"><Monitor className="h-4 w-4" />Sessions</TabsTrigger>
+           <TabsTrigger data-tab="social" value="social" className="py-2 min-h-[44px] shrink-0 gap-1"><ExternalLink className="h-4 w-4" />Social</TabsTrigger>
+           <TabsTrigger data-tab="player-reader" value="player-reader" className="py-2 min-h-[44px] shrink-0 gap-1"><MonitorPlay className="h-4 w-4" />Player & Reader</TabsTrigger>
+           <TabsTrigger data-tab="sessions" value="sessions" className="py-2 min-h-[44px] shrink-0 gap-1"><Monitor className="h-4 w-4" />Sessions</TabsTrigger>
+
             <TabsTrigger data-tab="syllabus" value="syllabus" className="py-2 min-h-[44px] shrink-0 gap-1"><FileText className="h-4 w-4" />Syllabus</TabsTrigger>
             <TabsTrigger data-tab="timetable" value="timetable" className="py-2 min-h-[44px] shrink-0 gap-1"><Clock className="h-4 w-4" />Timetable</TabsTrigger>
           </TabsList>
@@ -1202,8 +1206,12 @@ const Admin = () => {
             {activeTab === 'library' && <LibraryManager coursesList={coursesList} />}
           </TabsContent>
 
-          {/* SOCIAL TAB */}
-          <TabsContent value="social"><SocialLinksManager /></TabsContent>
+           {/* PLAYER & READER TAB */}
+           <TabsContent value="player-reader">{activeTab === 'player-reader' && <PlayerReaderControlsManager />}</TabsContent>
+
+           {/* SOCIAL TAB */}
+           <TabsContent value="social"><SocialLinksManager /></TabsContent>
+
 
           {/* LIVE TAB */}
           <TabsContent value="live">
