@@ -13,7 +13,7 @@ const SOCIAL_KEYS = [
   { key: "telegram_url", label: "Telegram", placeholder: "https://t.me/mahimaacademy", icon: "✈️" },
   { key: "instagram_url", label: "Instagram", placeholder: "https://instagram.com/mahimaacademy", icon: "📸" },
   { key: "twitter_url", label: "Twitter / X", placeholder: "https://x.com/mahimaacademy", icon: "🐦" },
-  { key: "youtube_url", label: "YouTube", placeholder: "https://youtube.com/@mahimaacademy", icon: "🎬" },
+  { key: "youtube_url", label: "YouTube", placeholder: "https://www.youtube.com/channel/UCJig1qwQQN3doNzobNDlB_A", icon: "🎬" },
   { key: "facebook_url", label: "Facebook", placeholder: "https://facebook.com/mahimaacademy", icon: "📘" },
 ];
 
