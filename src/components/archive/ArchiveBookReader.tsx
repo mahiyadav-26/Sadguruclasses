@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
+import { beginSyntheticPop, isSyntheticPop } from "../../lib/reader/overlayHistory";
 
 
 interface DownloadFormat {
@@ -158,12 +159,15 @@ export function ArchiveBookReader({
   useEffect(() => {
     if (!isFullscreen) return;
     try { window.history.pushState({ overlay: true }, ""); } catch {}
-    const onPop = () => setIsFullscreen(false);
+    const onPop = () => {
+      if (isSyntheticPop()) return;
+      setIsFullscreen(false);
+    };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
       if (window.history.state?.overlay) {
-        try { window.history.back(); } catch {}
+        try { beginSyntheticPop(); window.history.back(); } catch {}
       }
     };
   }, [isFullscreen]);
