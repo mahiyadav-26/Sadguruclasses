@@ -2495,10 +2495,10 @@ const LessonView = () => {
                             </p>
                             <div className="grid gap-3 sm:grid-cols-2">
                               {[
-                                { name: "Ramchandra Sir", role: "Founder & Lead Mentor", phone: "+91 91258 38309", email: "ramchandra@sadgurucoaching.in", initials: "RV" },
-                                { name: "Priya Ma'am", role: "Spoken English Mentor", phone: "+91 91258 38309", email: "priya@sadgurucoaching.in", initials: "PM" },
-                                { name: "Rahul Sir", role: "Grammar Mentor", phone: "+91 91258 38309", email: "rahul@sadgurucoaching.in", initials: "RS" },
-                                { name: "Anjali Ma'am", role: "CG Lecturer Prep Mentor", phone: "+91 91258 38309", email: "anjali@sadgurucoaching.in", initials: "AM" },
+                                { name: "Ramchandra Sir", role: "Founder & Lead Mentor", phone: "+91 73884 59249", email: "ramchandra@sadgurucoaching.in", initials: "RV" },
+                                { name: "Priya Ma'am", role: "Spoken English Mentor", phone: "+91 73884 59249", email: "priya@sadgurucoaching.in", initials: "PM" },
+                                { name: "Rahul Sir", role: "Grammar Mentor", phone: "+91 73884 59249", email: "rahul@sadgurucoaching.in", initials: "RS" },
+                                { name: "Anjali Ma'am", role: "CG Lecturer Prep Mentor", phone: "+91 73884 59249", email: "anjali@sadgurucoaching.in", initials: "AM" },
                               ].map((m) => (
                                 <div key={m.name} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-muted/20">
                                   <div className="h-11 w-11 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
