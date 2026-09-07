@@ -50,9 +50,20 @@ See https://github.com/adobe-type-tools/cmap-resources
          saw in the screenshot. Keep horizontal centering intact. */
       #viewer { padding-top: 0 !important; }
       #viewer .page,
-      .pdfViewer .page { margin-top: 0 !important; border-image: none !important; box-shadow: none !important; }
+      .pdfViewer .page {
+        margin: 0 auto !important;
+        border: 0 !important;
+        border-image: none !important;
+        box-shadow: none !important;
+        background-color: #fff !important;
+      }
       #viewer .page:first-child,
       .pdfViewer .page:first-child { margin-top: 0 !important; }
+      /* Wrapped / spread layouts get the same zero-gap treatment. */
+      .pdfViewer:is(.scrollHorizontal, .scrollWrapped) :is(.page, .spread),
+      .spread :is(.page, .dummyPage) { margin: 0 auto !important; }
+      .pdfViewer:is(.scrollHorizontal, .scrollWrapped), .spread { margin-inline: 0 !important; }
+      .pdfViewer { padding-bottom: 0 !important; }
     </style>
 
   <script src="viewer.mjs" type="module"></script>
