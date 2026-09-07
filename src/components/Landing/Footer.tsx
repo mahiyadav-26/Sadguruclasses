@@ -6,7 +6,7 @@ import { WHATSAPP_NUMBER } from "../common/WhatsAppButton";
 
 const Footer = forwardRef<HTMLElement>((_, ref) => {
   const currentYear = useMemo(() => new Date().getFullYear(), []);
-  const phoneDisplay = "+91 91258 38309";
+  const phoneDisplay = "+91 73884 59249";
 
   const cols = [
     {
@@ -123,7 +123,7 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
             <div className="flex items-center gap-3 pt-2">
               {[
                 {
-                  href: "https://youtube.com/@sadgurucoachingclasses",
+                  href: "https://www.youtube.com/channel/UCJig1qwQQN3doNzobNDlB_A",
                   label: "Watch Sadguru Coaching Classes on YouTube",
                   icon: Youtube,
                 },
