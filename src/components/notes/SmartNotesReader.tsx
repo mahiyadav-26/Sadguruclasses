@@ -8,6 +8,7 @@ import AutoScrollFab from "../viewer/AutoScrollFab";
 import RotatePhoneIcon from "../icons/RotatePhoneIcon";
 import { lockOrientation, unlockOrientation } from "../../lib/screenOrientation";
 import { useSmartNote } from "../../hooks/useSmartNote";
+import { beginSyntheticPop, isSyntheticPop } from "../../lib/reader/overlayHistory";
 
 /** Reading-mode toggle: tap = sepia theme, long-press (≥450ms) = focus mode. */
 function ReadingToggleButton({
@@ -196,12 +197,15 @@ export default function SmartNotesReader({ markdown, title, onBack, onDownload, 
   // navigating the enclosing lesson/course route.
   useEffect(() => {
     try { window.history.pushState({ overlay: true }, ""); } catch {}
-    const onPop = () => { try { onBack(); } catch {} };
+    const onPop = () => {
+      if (isSyntheticPop()) return;
+      try { onBack(); } catch {}
+    };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
       if (window.history.state?.overlay) {
-        try { window.history.back(); } catch {}
+        try { beginSyntheticPop(); window.history.back(); } catch {}
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
