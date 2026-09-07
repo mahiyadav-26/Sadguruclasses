@@ -10,6 +10,7 @@ import HeroCarousel from "../components/dashboard/HeroCarousel";
 // floating-ui, popper, dismissable-layer pulled in by LeadForm) stay out of
 // the initial entry chunk. Saves ~18KB gzipped on cold start.
 const WhyChooseUs = lazyWithRetry(() => import("../components/Landing/WhyChooseUs"));
+const YouTubeStrip = lazyWithRetry(() => import("../components/Landing/YouTubeStrip"));
 const FreeContent = lazyWithRetry(() => import("../components/Landing/FreeContent"));
 const CommunityStrip = lazyWithRetry(() => import("../components/Landing/CommunityStrip"));
 const LeadForm = lazyWithRetry(() => import("../components/Landing/LeadForm"));
@@ -196,6 +197,7 @@ const Index = () => {
           <FreeContent />
           <Testimonials />
           <section id="why-choose-us" aria-label="Our method"><WhyChooseUs /></section>
+          <YouTubeStrip />
           <GraduationBanner />
           <section id="community" aria-label="Join our community"><CommunityStrip /></section>
           <section id="lead-form" aria-label="Final CTA"><LeadForm /></section>
