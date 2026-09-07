@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
 - Student ko batao ki better results ke liye lesson ka description available hona chahiye.`;
 
     let prompt = "";
-    let systemPrompt = `You are Safar Sarthi, the AI learning companion for Sadguru Coaching Classes coaching platform. You help Indian students preparing for NEET/JEE/Board exams.
+    let systemPrompt = `You are Sadguru AI Sahayak, the AI learning companion for Sadguru Coaching Classes coaching platform. You help Indian students preparing for NEET/JEE/Board exams.
 
 IMPORTANT RULES:
 - Tum is SPECIFIC lecture ke baare mein baat karo, general knowledge mat do.
@@ -105,7 +105,7 @@ IMPORTANT RULES:
 ${groundingInstruction}`;
 
     if (mode === "research") {
-      systemPrompt = `You are Safar Sarthi, an expert educational researcher for Sadguru Coaching Classes platform. You do deep conceptual analysis for NEET/JEE/Board exam students.
+      systemPrompt = `You are Sadguru AI Sahayak, an expert educational researcher for Sadguru Coaching Classes platform. You do deep conceptual analysis for NEET/JEE/Board exam students.
 
 IMPORTANT RULES:
 - SIRF is specific lecture topic ke concepts pe focus karo.
