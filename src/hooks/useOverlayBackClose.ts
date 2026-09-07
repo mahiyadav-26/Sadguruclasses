@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { beginSyntheticPop } from "../lib/reader/overlayHistory";
 
 /**
  * Pushes a history sentinel when `open` becomes true and calls `onClose`
@@ -43,6 +44,9 @@ export function useOverlayBackClose(
       // so history stays clean (next back press behaves normally).
       if (pushedRef.current && window.history.state?.overlay === key) {
         pushedRef.current = false;
+        // Mark this as a self-inflicted pop so lower overlays (fullscreen PDF
+        // viewer, player fullscreen) don't read it as a hardware back press.
+        beginSyntheticPop();
         window.history.back();
       }
     };

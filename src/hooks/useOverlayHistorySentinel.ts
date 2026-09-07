@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { beginSyntheticPop } from "../lib/reader/overlayHistory";
 
 /**
  * Pushes a `{ overlay: <unique-key> }` history sentinel while `open` is true
@@ -59,6 +60,7 @@ export function useOverlayHistorySentinel(
         window.history.state?.overlay === ourKey
       ) {
         pushedRef.current = false;
+        beginSyntheticPop();
         window.history.back();
       }
     };

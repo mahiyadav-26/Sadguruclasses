@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isSyntheticPop } from "../lib/reader/overlayHistory";
 
 /**
  * Unified fullscreen helper for video players inside Capacitor's Android WebView.
@@ -78,6 +79,9 @@ export const useFakeFullscreen = (
     // Reconcile on popstate so back-button exit matches fake-fullscreen
     // exit paths (fullscreenchange / visibilitychange).
     const onPopState = () => {
+      // An overlay closing itself (autoscroll sheet Done) must not drop the
+      // reader/player out of fullscreen.
+      if (isSyntheticPop()) return;
       if (!window.history.state?.playerFullscreen) release();
     };
     document.addEventListener("fullscreenchange", onFsChange);

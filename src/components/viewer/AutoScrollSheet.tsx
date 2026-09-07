@@ -117,7 +117,10 @@ export default function AutoScrollSheet({
   return (
     <div
       className="fixed inset-0 z-[69] flex items-end justify-center bg-black/40 sm:items-center [@media(max-height:520px)]:items-stretch [@media(max-height:520px)]:justify-end"
-      onClick={onClose}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
     >
       <div
         ref={sheetRef}
@@ -609,7 +612,13 @@ export default function AutoScrollSheet({
         >
           <button
             type="button"
-            onClick={onClose}
+            onClick={(e) => {
+              // Never let the tap reach reader chrome underneath (tap-to-close,
+              // chrome toggles) — Done only dismisses this sheet.
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
             className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground"
           >
             Done

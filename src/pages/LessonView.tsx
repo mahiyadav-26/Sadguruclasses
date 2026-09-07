@@ -69,6 +69,7 @@ import { CollapsiblePdfSection } from "@/features/lesson/components/CollapsibleP
 import notesFireIcon from "../assets/icons/notes-fire.svg";
 import { logger } from "@/lib/logger";
 import { useLessonChat } from "@/hooks/useLessonChat";
+import { isSyntheticPop } from "../lib/reader/overlayHistory";
 // NOTE: `ChapterGroupedSidebar`, `LessonDescription`, `TopicsCovered` were
 // previously nested inside this file but never rendered (dead code).
 // They now live under `src/components/lesson/` for future reuse.
@@ -874,6 +875,11 @@ const LessonView = () => {
       pdfHistorySentinelActiveRef.current = true;
     } catch {}
     const onPop = () => {
+      // A nested overlay (autoscroll settings sheet, dialog) closing itself
+      // pops ITS sentinel — that must never close the PDF. Only a genuine
+      // back press, which pops our own `pdfFullscreen` entry, does.
+      if (isSyntheticPop()) return;
+      if (window.history.state?.pdfFullscreen) return;
       pdfHistorySentinelActiveRef.current = false;
       setSelectedPdf(null);
     };
