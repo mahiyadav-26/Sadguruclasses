@@ -29,7 +29,7 @@ const ExamLanding = memo(() => {
     provider: {
       "@type": "Organization",
       name: "Sadguru Coaching Classes",
-      sameAs: "https://youtube.com/@sadgurucoachingclasses",
+      sameAs: "https://www.youtube.com/channel/UCJig1qwQQN3doNzobNDlB_A",
     },
     inLanguage: ["hi", "en"],
     educationalLevel: track.badge,
