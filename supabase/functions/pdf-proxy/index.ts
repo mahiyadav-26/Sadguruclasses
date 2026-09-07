@@ -456,7 +456,7 @@ Deno.serve(async (req) => {
     if (kind === "url") {
 
       const target = input.searchParams.get("url") || "";
-      if (!isAllowedPdfUrl(target)) {
+      if (!(await isAllowedPdfUrlAsync(target))) {
         return new Response(JSON.stringify({ error: "URL not allowed" }), {
           status: 400,
           headers: headersWithCors({ "Content-Type": "application/json" }),
@@ -600,7 +600,83 @@ const ALLOWED_HOSTS = [
   /(^|\.)googleusercontent\.com$/i,
   // archive.org item pages + their `ia*.us.archive.org` download nodes.
   /(^|\.)archive\.org$/i,
+  // --- NCERT / CBSE official PDF hosts (free textbooks, exemplars, syllabus) ---
+  /(^|\.)ncert\.nic\.in$/i,
+  /(^|\.)ncertbooks\.nic\.in$/i,
+  /(^|\.)epathshala\.nic\.in$/i,
+  /(^|\.)cbseacademic\.nic\.in$/i,
+  /(^|\.)cbse\.gov\.in$/i,
+  /(^|\.)cbse\.nic\.in$/i,
+  // --- Notion-hosted files (page attachments + their signed S3 file hosts) ---
+  /(^|\.)notion\.so$/i,
+  /(^|\.)notion\.site$/i,
+  /(^|\.)notion-static\.com$/i,
+  /^prod-files-secure\.s3\.[a-z0-9-]+\.amazonaws\.com$/i,
+  // --- Generic public CDNs commonly used for lecture notes ---
+  /(^|\.)unpkg\.com$/i,
+  /(^|\.)cdn\.statically\.io$/i,
+  /(^|\.)cloudfront\.net$/i,
+  /(^|\.)r2\.dev$/i,
+  /(^|\.)b-cdn\.net$/i,
+  /(^|\.)githubusercontent\.com$/i,
+  /(^|\.)dropboxusercontent\.com$/i,
+  /(^|\.)supabase\.co$/i,
 ];
+
+// --- Admin-managed hosts (public.trusted_hosts) ------------------------------
+// The static list above is the baseline. Admins can widen it at runtime from
+// Admin -> Trusted Hosts without a redeploy, which is what the reader's
+// proxy fallback assumed all along. Cached briefly so a burst of pdf.js range
+// requests does not hammer Postgres.
+const TRUSTED_HOST_TTL_MS = 5 * 60 * 1000;
+let trustedHostCache: { hosts: string[]; at: number } | null = null;
+
+async function adminTrustedHosts(): Promise<string[]> {
+  const now = Date.now();
+  if (trustedHostCache && now - trustedHostCache.at < TRUSTED_HOST_TTL_MS) {
+    return trustedHostCache.hosts;
+  }
+  if (!adminClient) return trustedHostCache?.hosts ?? [];
+  try {
+    const { data, error } = await adminClient
+      .from("trusted_hosts")
+      .select("host, category, enabled")
+      .eq("enabled", true)
+      .in("category", ["media", "website", "frame"]);
+    if (error) throw error;
+    const hosts = (data ?? [])
+      .map((row: { host?: string }) => (row.host ?? "").trim().toLowerCase())
+      .filter((host: string) => /^[a-z0-9.-]+\.[a-z]{2,}$/.test(host));
+    trustedHostCache = { hosts, at: now };
+    return hosts;
+  } catch {
+    // Never hard-fail on a transient DB error — reuse the last good snapshot
+    // (or nothing, which leaves only the static baseline).
+    return trustedHostCache?.hosts ?? [];
+  }
+}
+
+/** Host matches an admin-approved entry exactly or as a subdomain. */
+function matchesTrustedHost(host: string, trusted: string[]): boolean {
+  const h = host.toLowerCase();
+  return trusted.some((t) => h === t || h.endsWith("." + t));
+}
+
+/**
+ * Full check: the SSRF guards from `isAllowedPdfUrl` plus the admin-managed
+ * host list. Used on every real request; `isAllowedPdfUrl` stays the
+ * synchronous static baseline (and the unit-tested surface).
+ */
+export async function isAllowedPdfUrlAsync(raw: string): Promise<boolean> {
+  if (isAllowedPdfUrl(raw)) return true;
+  try {
+    const u = new URL(raw);
+    if (!passesSsrfGuards(u)) return false;
+    return matchesTrustedHost(u.hostname, await adminTrustedHosts());
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Resolve an archive.org item id to a direct PDF download URL using the public
@@ -714,19 +790,27 @@ const GOOGLE_DOCS_HOST = /^docs\.google\.com$/i;
 const GOOGLE_EXPORT_PATH =
   /^\/(document|spreadsheets|presentation)\/d\/[A-Za-z0-9_-]+\/export\/?$/;
 
+/**
+ * SSRF guards shared by the static allow-list and the admin-managed one:
+ * https only, no credentials, no non-default ports, no IP-literal or private
+ * hosts (defeats DNS-rebinding / localhost / 169.254.169.254 metadata abuse).
+ */
+export function passesSsrfGuards(u: URL): boolean {
+  if (u.protocol !== "https:") return false;
+  if (u.username || u.password) return false;
+  if (u.port && u.port !== "443") return false;
+  const host = u.hostname;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return false; // IPv4 literal
+  if (host.includes(":")) return false;                 // IPv6 literal
+  if (/^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(host)) return false;
+  return true;
+}
+
 export function isAllowedPdfUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
-    // SSRF guard: https only, no credentials, no non-default ports, no
-    // IP-literal hosts (defeats DNS-rebinding / localhost / 169.254.169.254
-    // metadata abuse), allow-listed CDN hostnames only.
-    if (u.protocol !== "https:") return false;
-    if (u.username || u.password) return false;
-    if (u.port && u.port !== "443") return false;
+    if (!passesSsrfGuards(u)) return false;
     const host = u.hostname;
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return false; // IPv4 literal
-    if (host.includes(":")) return false;                 // IPv6 literal
-    if (/^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(host)) return false;
     if (GOOGLE_DOCS_HOST.test(host)) return GOOGLE_EXPORT_PATH.test(u.pathname);
     return ALLOWED_HOSTS.some((re) => re.test(host));
   } catch {
@@ -758,7 +842,7 @@ async function fetchRemoteFile(
 
   let currentUrl = url;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    if (!isAllowedPdfUrl(currentUrl)) {
+    if (!(await isAllowedPdfUrlAsync(currentUrl))) {
       // Synthesize a 502 so the caller sees an upstream failure instead of
       // us silently opening a hole to a private host.
       return new Response(
