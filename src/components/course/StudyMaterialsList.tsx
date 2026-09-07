@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import StudyMaterialAdminMenu from "./StudyMaterialAdminMenu";
 import DocReaderShell from "@/components/library/DocReaderShell";
 import { openResource } from "@/lib/openResource";
+import { isSyntheticPop } from "../../lib/reader/overlayHistory";
 
 type Filter = "all" | StudyMaterialKind;
 
@@ -61,7 +62,12 @@ export default function StudyMaterialsList({ courseId, chapters }: Props) {
         "",
       );
     } catch { /* noop */ }
-    const onPop = () => setViewer(null);
+    const onPop = () => {
+      // A nested overlay (autoscroll sheet, notes) closing itself pops its own
+      // sentinel — that must never close the PDF viewer underneath.
+      if (isSyntheticPop()) return;
+      setViewer(null);
+    };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
