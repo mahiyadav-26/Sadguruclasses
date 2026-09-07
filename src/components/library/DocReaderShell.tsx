@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookMarked, BookOpen, Download, Loader2, NotebookPen, X } from "lucide-react";
+import { ArrowLeft, BookMarked, BookOpen, Download, Loader2, Maximize2, Minimize2, NotebookPen, X } from "lucide-react";
 import RotatePhoneIcon from "../icons/RotatePhoneIcon";
 import { Button } from "../ui/button";
 import PdfViewer, { type PdfViewerHandle } from "../video/PdfViewer";
@@ -17,6 +17,7 @@ import { lockOrientation, unlockOrientation } from "../../lib/screenOrientation"
 import { tapHaptic, selectionHaptic } from "../../lib/native/haptics";
 import { hideStatusBar, showStatusBar } from "../../lib/nativeChrome";
 import { enterImmersive, exitImmersive } from "../../lib/androidImmersive";
+import { beginSyntheticPop, isSyntheticPop } from "../../lib/reader/overlayHistory";
 
 interface Props {
   url: string;
@@ -42,6 +43,8 @@ export default function DocReaderShell({
   const [savingLibrary, setSavingLibrary] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
+  // Full-page mode: PDF fills the screen edge-to-edge, chrome stays out of the way.
+  const [fullPage, setFullPage] = useState(false);
   const [landscape, setLandscape] = useState(false);
   const [autoActive, setAutoActive] = useState(false);
   const isMobile = useIsMobile();
@@ -58,12 +61,17 @@ export default function DocReaderShell({
   // navigating the enclosing route (Library/Downloads/etc.).
   useEffect(() => {
     try { window.history.pushState({ pdfFullscreen: true }, ""); } catch {}
-    const onPop = () => { try { onBack(); } catch {} };
+    const onPop = () => {
+      // Nested overlays (autoscroll sheet) pop their own sentinel when they
+      // close — ignore those so the PDF stays open.
+      if (isSyntheticPop()) return;
+      try { onBack(); } catch {}
+    };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
       if (window.history.state?.pdfFullscreen) {
-        try { window.history.back(); } catch {}
+        try { beginSyntheticPop(); window.history.back(); } catch {}
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,6 +282,25 @@ export default function DocReaderShell({
             </Button>
           )}
           <Button
+            variant={fullPage ? "secondary" : "ghost"}
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              void selectionHaptic();
+              setFullPage((v) => {
+                const next = !v;
+                if (next) setHeaderVisible(false);
+                return next;
+              });
+            }}
+            aria-label={fullPage ? "Exit full page" : "Full page"}
+            aria-pressed={fullPage}
+            title="Full page"
+            className="h-11 w-11 active:scale-[0.94] transition-transform duration-150 ease-out"
+          >
+            {fullPage ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+          </Button>
+          <Button
             variant={readingMode ? "secondary" : "ghost"}
             size="icon"
             onClick={(e) => { void selectionHaptic(); toggleReadingMode(e); }}
@@ -306,7 +333,7 @@ export default function DocReaderShell({
         <div
           className="absolute inset-x-0 bottom-0 bg-background transition-[top] duration-300"
           style={{
-            top: headerVisible
+            top: headerVisible && !fullPage
               ? "calc(env(safe-area-inset-top, 0px) + 48px)"
               : "0px",
           }}
