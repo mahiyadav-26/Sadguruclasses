@@ -19,6 +19,7 @@ const NotionRenderer = lazyWithRetry(() =>
 
 // react-notion-x base CSS — required for layout/typography of the rendered page.
 import "react-notion-x/src/styles.css";
+import { isSyntheticPop } from "../../lib/reader/overlayHistory";
 
 interface Props {
   url: string;
@@ -154,6 +155,7 @@ export default function NotionPageRenderer({ url, title, onClose, onReady, onDoc
   useEffect(() => {
     if (stack.length <= 1) return;
     const onPop = (e: PopStateEvent) => {
+      if (isSyntheticPop()) return;
       e.stopImmediatePropagation();
       setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
       // Re-push sentinel so the next back press still has something to pop.
