@@ -233,6 +233,29 @@ export default function FolderView({ folder, allFolders, onRefreshOuter, sort = 
     }
   };
 
+  /** Download a link item's bytes into the very same row (folder + order kept). */
+  const saveLinkItemOffline = async (id: string) => {
+    const it = items.find((x) => x.id === id);
+    if (!it) return;
+    const t = toast.loading("Downloading…");
+    try {
+      const [{ saveLinkOffline }, { classifyLink }] = await Promise.all([
+        import("../../../lib/linkOfflineSave"),
+        import("../../../lib/linkSources"),
+      ]);
+      await saveLinkOffline({
+        url: it.local_path,
+        title: it.title,
+        source: (it.link_source as ReturnType<typeof classifyLink>) || classifyLink(it.local_path),
+        itemId: it.id,
+      });
+      await refresh();
+      toast.success("Saved offline", { id: t });
+    } catch (err) {
+      toast.error((err as Error)?.message || "Could not save offline", { id: t });
+    }
+  };
+
   const handleOpen = async (id: string, title: string, file_name: string) => {
     const url = await getItemUri(id);
     if (!url) {
@@ -274,7 +297,12 @@ export default function FolderView({ folder, allFolders, onRefreshOuter, sort = 
             <Button
               size="sm"
               variant={selectMode ? "default" : "outline"}
-              onClick={() => { void selectionHaptic(); selectMode ? exitSelection() : setSelectMode(true); }}
+              onClick={() => {
+                void selectionHaptic();
+                if (selectMode) exitSelection();
+                else setSelectMode(true);
+              }}
+
               aria-pressed={selectMode}
             >
               <CheckSquare className="h-3.5 w-3.5 sm:mr-1" />
@@ -376,8 +404,16 @@ export default function FolderView({ folder, allFolders, onRefreshOuter, sort = 
                 <p className="text-sm font-semibold truncate">{it.title}</p>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="text-[11px] text-muted-foreground">
-                    {fmtBytes(it.size_bytes)} · {new Date(it.added_at).toLocaleDateString()}
+                    {it.source === "link"
+                      ? `Link${it.link_source ? ` · ${it.link_source}` : ""}`
+                      : fmtBytes(it.size_bytes)}{" "}
+                    · {new Date(it.added_at).toLocaleDateString()}
                   </span>
+                  {it.source === "link" && (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      Online
+                    </span>
+                  )}
                   <PriorityBadgeChip itemKey={priorityKeyForPersonalItem(it.id)} />
                 </div>
               </div>
@@ -414,6 +450,11 @@ export default function FolderView({ folder, allFolders, onRefreshOuter, sort = 
                     <DropdownMenuItem onClick={() => setDuplicateItemId(it.id)}>
                       <Copy className="h-4 w-4 mr-2" /> Duplicate to…
                     </DropdownMenuItem>
+                    {it.source === "link" && (
+                      <DropdownMenuItem onClick={() => void saveLinkItemOffline(it.id)}>
+                        Save offline
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => setMoveItemId(it.id)}>
                       <FolderInput className="h-4 w-4 mr-2" /> Move to folder…
                     </DropdownMenuItem>

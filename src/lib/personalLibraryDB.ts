@@ -7,7 +7,7 @@
  */
 
 const DB_NAME = "nb_personal_library";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const FOLDERS = "folders";
 const ITEMS = "items";
 const FILES = "files"; // web persistence: { id, blob }
@@ -31,13 +31,19 @@ export interface PersonalItem {
   file_name: string;
   mime_type: string;
   size_bytes: number;
-  local_path: string; // relative path under Filesystem.Directory.Data
-  source: "device" | "lesson";
+  /** Relative path under Filesystem.Directory.Data, or an http(s) URL for link items. */
+  local_path: string;
+  source: "device" | "lesson" | "link";
   added_at: string;
   last_opened_at: string | null;
   /** Manual order within a folder. Lower = earlier. */
   sort_index?: number;
+  /** Link items only — where the URL came from ("drive", "cdn", …). */
+  link_source?: string;
+  /** Link items only — viewer kind hint ("PDF", "IMAGE", "LINK", …). */
+  link_kind?: string;
 }
+
 
 /** Hole I — cache the connection and react to `versionchange`. If another
  *  tab/instance triggers a schema upgrade while an import is mid-flight, we
@@ -59,12 +65,29 @@ function openDB(): Promise<IDBDatabase> {
         const s = db.createObjectStore(FOLDERS, { keyPath: "id" });
         s.createIndex("position", "position", { unique: false });
         s.createIndex("parent_id", "parent_id", { unique: false });
+        s.createIndex("parent_key", "parent_key", { unique: false });
       } else {
         const store = upgradeTx.objectStore(FOLDERS);
         if (!store.indexNames.contains("parent_id")) {
           store.createIndex("parent_id", "parent_id", { unique: false });
         }
+        if (!store.indexNames.contains("parent_key")) {
+          store.createIndex("parent_key", "parent_key", { unique: false });
+        }
+        // Backfill parent_key on legacy rows so root lookups stay index-backed.
+        const reqF = store.openCursor();
+        reqF.onsuccess = () => {
+          const cursor = reqF.result;
+          if (!cursor) return;
+          const v = cursor.value as PersonalFolder & { parent_key?: string };
+          if (typeof v.parent_key !== "string") {
+            v.parent_key = v.parent_id ?? "__root__";
+            cursor.update(v);
+          }
+          cursor.continue();
+        };
       }
+
 
       // Items store
       if (!db.objectStoreNames.contains(ITEMS)) {
@@ -150,8 +173,16 @@ function tx<T>(
   );
 }
 
+export const ROOT_KEY = "__root__";
+
+/** Folders are stored with a derived, never-null `parent_key` so root-level
+ *  lookups can use an index too (IndexedDB cannot key-range on null). */
+function withParentKey(rec: PersonalFolder): PersonalFolder & { parent_key: string } {
+  return { ...rec, parent_key: rec.parent_id ?? ROOT_KEY };
+}
+
 export const folderDB = {
-  put: (rec: PersonalFolder) => tx(FOLDERS, "readwrite", (s) => s.put(rec)),
+  put: (rec: PersonalFolder) => tx(FOLDERS, "readwrite", (s) => s.put(withParentKey(rec))),
   get: (id: string) =>
     tx<PersonalFolder | undefined>(FOLDERS, "readonly", (s) => s.get(id)),
   delete: (id: string) => tx(FOLDERS, "readwrite", (s) => s.delete(id)),
@@ -159,11 +190,12 @@ export const folderDB = {
     tx<PersonalFolder[]>(FOLDERS, "readonly", (s) =>
       s.getAll() as IDBRequest<PersonalFolder[]>
     ),
-  /** Children of a folder. Pass null for root-level folders. */
-  children: async (parent_id: string | null) => {
-    const all = await folderDB.all();
-    return all.filter((f) => (f.parent_id ?? null) === parent_id);
-  },
+  /** Children of a folder. Pass null for root-level folders.
+   *  Always index-backed (O(log n) + k) via the derived `parent_key`. */
+  children: (parent_id: string | null) =>
+    tx<PersonalFolder[]>(FOLDERS, "readonly", (s) =>
+      s.index("parent_key").getAll(IDBKeyRange.only(parent_id ?? ROOT_KEY)) as IDBRequest<PersonalFolder[]>
+    ),
 };
 
 export const itemDB = {
@@ -175,11 +207,13 @@ export const itemDB = {
     tx<PersonalItem[]>(ITEMS, "readonly", (s) =>
       s.getAll() as IDBRequest<PersonalItem[]>
     ),
-  byFolder: async (folder_id: string) => {
-    const all = await itemDB.all();
-    return all.filter((i) => i.folder_id === folder_id);
-  },
+  /** Index-backed folder listing — no full-store scan at scale. */
+  byFolder: (folder_id: string) =>
+    tx<PersonalItem[]>(ITEMS, "readonly", (s) =>
+      s.index("folder_id").getAll(IDBKeyRange.only(folder_id)) as IDBRequest<PersonalItem[]>
+    ),
 };
+
 
 /** Web-only: persistent Blob store so uploaded PDFs survive reloads. */
 export const fileDB = {

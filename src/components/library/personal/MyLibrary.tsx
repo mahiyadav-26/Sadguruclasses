@@ -1,16 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpDown, Camera, Check, ChevronDown, ChevronRight, Folder as FolderIcon, HardDrive, Home, Plus, Search, Settings2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUpDown, Camera, Check, ChevronDown, ChevronRight, Folder as FolderIcon, HardDrive, Home, Link2, Plus, Search, Settings2 } from "lucide-react";
 import { usePersonalStoragePermission } from "../../../hooks/usePersonalStoragePermission";
 import { usePersonalLibrary } from "../../../hooks/usePersonalLibrary";
 import type { PersonalFolder } from "../../../lib/personalLibraryDB";
 import { folderDB } from "../../../lib/personalLibraryDB";
-import { fmtBytes } from "../../../lib/personalLibraryQuota";
+import { fmtBytes, isLowOnSpace } from "../../../lib/personalLibraryQuota";
 import { addFileToFolder, getOrCreateFolder, type ItemSort } from "../../../services/personalLibrary";
 import { pickPhoto } from "../../../lib/native/camera";
 import PersonalLibraryGate from "./PersonalLibraryGate";
 import FolderGrid from "./FolderGrid";
 import FolderView from "./FolderView";
 import ManageFoldersDialog from "./ManageFoldersDialog";
+import AddFromLinkDialog from "./AddFromLinkDialog";
+import UniversalFileViewer from "../UniversalFileViewer";
+import ReaderErrorBoundary from "../ReaderErrorBoundary";
+import useOverlayBackClose from "../../../hooks/useOverlayBackClose";
+import { migrateLegacyLinkShelf } from "../../../lib/linkMigration";
 import { Input } from "../../ui/input";
 import {
   DropdownMenu,
@@ -93,7 +98,8 @@ export default function MyLibrary() {
     folders,
     allFolders,
     used,
-    cap,
+    quota,
+    free,
     error: libraryError,
     createFolder,
     renameFolder,
@@ -102,6 +108,37 @@ export default function MyLibrary() {
     reorderFolder,
     refresh,
   } = usePersonalLibrary(currentId);
+
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkReader, setLinkReader] = useState<{ url: string; title: string; kind: string } | null>(
+    null,
+  );
+  const closeLinkReader = useCallback(() => setLinkReader(null), []);
+  useOverlayBackClose(!!linkReader, closeLinkReader, "personal-library-link-reader");
+
+  // Legacy localStorage link shelf → real library items (runs once).
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const n = await migrateLegacyLinkShelf();
+        if (n > 0 && alive) {
+          await refresh();
+          toast.success(`Moved ${n} saved link${n > 1 ? "s" : ""} into your folders`);
+        }
+      } catch (err) {
+        reportError(err, { surface: "MyLibrary.linkMigration" });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+
+
 
   useEffect(() => {
     if (!path.length) return;
@@ -135,8 +172,8 @@ export default function MyLibrary() {
 
   if (!allowed) return <PersonalLibraryGate onAllow={allow} />;
 
-  const pct = cap ? Math.min(100, Math.round((used / cap) * 100)) : 0;
-  const nearFull = pct >= 80;
+  const pct = quota ? Math.min(100, Math.round(((quota - (free ?? quota)) / quota) * 100)) : 0;
+  const nearFull = isLowOnSpace(quota, free);
 
   const handleRootPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files || []);
@@ -211,20 +248,40 @@ export default function MyLibrary() {
   };
 
 
+  // "Read now" opens the link in the same viewer stored files use.
+  if (linkReader) {
+    return (
+      <ReaderErrorBoundary onBack={closeLinkReader} resetKey={linkReader.url} label="personal-library-link-reader">
+        <UniversalFileViewer
+          url={linkReader.url}
+          title={linkReader.title}
+          filename={`${linkReader.title}.${linkReader.kind.toLowerCase()}`}
+          fileType={linkReader.kind}
+          source="library"
+          onBack={closeLinkReader}
+        />
+      </ReaderErrorBoundary>
+    );
+  }
+
   return (
+
     <div className="space-y-4">
       <div className="rounded-xl border bg-card p-3">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <HardDrive className="h-3.5 w-3.5" />
-          {fmtBytes(used)} of {fmtBytes(cap)} used
+          {fmtBytes(used)} used{free !== null ? ` · ${fmtBytes(free)} free on this device` : ""}
         </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={`h-full ${nearFull ? "bg-amber-500" : "bg-primary"}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        {quota !== null && (
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full ${nearFull ? "bg-amber-500" : "bg-primary"}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
         {nearFull && (
+
           <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-400">
             Storage is almost full. Delete files you no longer need to keep the app fast.
           </p>
@@ -238,6 +295,7 @@ export default function MyLibrary() {
           </div>
         )}
       </div>
+
 
 
       {/* Search + folder filter + sort — minimal toolbar; add actions live in the bottom pill FAB */}
@@ -388,23 +446,40 @@ export default function MyLibrary() {
         />
       )}
 
+      {/* Links are ordinary library items now — added straight into a folder */}
+      <AddFromLinkDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        folders={allFolders}
+        currentFolderId={currentId}
+        onSaved={refresh}
+        onRead={(l) => setLinkReader(l)}
+      />
+
+
+
+
       {!path.length && allFolders.length === 0 && !query && (
-        <div className="rounded-2xl border border-dashed bg-muted/20 px-6 py-10 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <FolderIcon className="h-7 w-7" />
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 px-6 py-10 text-center">
+          {/* Gradient tile — reference: Notion / Linear empty collections */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
+          <div className="relative">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+              <FolderIcon className="h-7 w-7" strokeWidth={2} />
+            </div>
+            <p className="text-base font-semibold text-foreground">Your library is empty</p>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground leading-relaxed">
+              Create your first folder to organise PDFs, notes and scans. Files stay on this device — nothing is uploaded.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              className="mt-5 h-9 px-5"
+              onClick={() => setManageOpen(true)}
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Create your first folder
+            </Button>
           </div>
-          <p className="text-base font-semibold text-foreground">Your library is empty</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
-            Create your first folder to organise PDFs, notes and scans. Files stay on this device — nothing is uploaded.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            className="mt-4 h-9 px-4"
-            onClick={() => setManageOpen(true)}
-          >
-            <Plus className="mr-1.5 h-4 w-4" /> Add your first folder
-          </Button>
         </div>
       )}
 
@@ -437,6 +512,15 @@ export default function MyLibrary() {
             className="inline-flex w-20 items-center justify-center transition-colors active:bg-primary/80"
           >
             <Plus className="h-7 w-7" strokeWidth={2.5} />
+          </button>
+          <span aria-hidden className="my-3 w-px bg-primary-foreground/40" />
+          <button
+            type="button"
+            onClick={() => setLinkDialogOpen(true)}
+            aria-label="Add a PDF from a link"
+            className="inline-flex w-20 items-center justify-center transition-colors active:bg-primary/80"
+          >
+            <Link2 className="h-6 w-6" strokeWidth={2} />
           </button>
         </div>
       </div>

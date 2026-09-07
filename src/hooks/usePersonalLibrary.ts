@@ -21,7 +21,7 @@ import {
   type ItemSort,
 } from "../services/personalLibrary";
 import type { PersonalFolder, PersonalItem } from "../lib/personalLibraryDB";
-import { getUsedBytes, PERSONAL_LIB_SOFT_CAP_BYTES } from "../lib/personalLibraryQuota";
+import { getUsedBytes, getDeviceSpace } from "../lib/personalLibraryQuota";
 
 const REFRESH_EVENT = "personalLibrary:refresh";
 const emitRefresh = () => {
@@ -32,6 +32,7 @@ export function usePersonalLibrary(parent_id: string | null = null) {
   const [folders, setFolders] = useState<PersonalFolder[]>([]);
   const [allFolders, setAllFolders] = useState<PersonalFolder[]>([]);
   const [used, setUsed] = useState(0);
+  const [space, setSpace] = useState<{ quota: number | null; free: number | null }>({ quota: null, free: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const inflightRef = useRef(false);
@@ -45,15 +46,18 @@ export function usePersonalLibrary(parent_id: string | null = null) {
     }
     inflightRef.current = true;
     try {
-      const [f, all, u] = await Promise.all([
+      const [f, all, u, s] = await Promise.all([
         listFolders(parent_id),
         listAllFolders(),
         getUsedBytes(),
+        getDeviceSpace(),
       ]);
       setFolders(f);
       setAllFolders(all);
       setUsed(u);
+      setSpace(s);
       setError(null);
+
     } catch (err) {
       // IndexedDB can be unavailable (private mode, evicted store, WebView storage reset).
       // Surface it instead of leaving an unhandled rejection + blank page.
@@ -87,7 +91,9 @@ export function usePersonalLibrary(parent_id: string | null = null) {
     error,
 
     used,
-    cap: PERSONAL_LIB_SOFT_CAP_BYTES,
+    quota: space.quota,
+    free: space.free,
+
     refresh,
     createFolder: async (
       name: string,
@@ -127,6 +133,9 @@ export function useFolderItems(folder_id: string | null, sort: ItemSort = "manua
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const inflightRef = useRef(false);
+  const pendingRef = useRef(false);
+  const missedRef = useRef(false);
+  const refreshRef = useRef<() => Promise<void>>();
 
   const refresh = useCallback(async () => {
     if (!folder_id) {
@@ -135,7 +144,13 @@ export function useFolderItems(folder_id: string | null, sort: ItemSort = "manua
       setLoading(false);
       return;
     }
-    if (inflightRef.current) return;
+    // Coalesce: a request that lands mid-read must NOT be dropped — that is
+    // why a freshly saved file only showed up "kuchh der baad". Remember it
+    // and re-run once the in-flight read settles.
+    if (inflightRef.current) {
+      pendingRef.current = true;
+      return;
+    }
     inflightRef.current = true;
     setError(null);
     try {
@@ -147,19 +162,53 @@ export function useFolderItems(folder_id: string | null, sort: ItemSort = "manua
     } finally {
       setLoading(false);
       inflightRef.current = false;
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        void refreshRef.current?.();
+      }
     }
   }, [folder_id, sort]);
+
+  refreshRef.current = refresh;
 
   useEffect(() => {
     refresh();
     // Cross-mount instant refresh: any add/delete/move anywhere in the app
     // dispatches "personalLibrary:refresh" — pick it up so the grid updates
-    // without a manual pull-to-refresh. Skip while backgrounded to avoid
-    // wasted IDB reads on Android.
-    const handler = () => { if (!document.hidden) refresh(); };
+    // without a manual pull-to-refresh.
+    let burst: number | null = null;
+    const handler = () => {
+      if (document.hidden) {
+        // Don't burn IDB reads while backgrounded, but never lose the event:
+        // replay it as soon as the app comes back to the foreground.
+        missedRef.current = true;
+        return;
+      }
+      // Bulk "Move to My Library" fires one event per item — collapse the
+      // burst into a single trailing read.
+      if (burst) window.clearTimeout(burst);
+      burst = window.setTimeout(() => {
+        burst = null;
+        void refresh();
+      }, 30);
+      // …but still refresh immediately for the very first event so a single
+      // add feels instant.
+      void refresh();
+    };
+    const onVisible = () => {
+      if (document.hidden || !missedRef.current) return;
+      missedRef.current = false;
+      void refresh();
+    };
     window.addEventListener(REFRESH_EVENT, handler);
-    return () => window.removeEventListener(REFRESH_EVENT, handler);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      if (burst) window.clearTimeout(burst);
+      window.removeEventListener(REFRESH_EVENT, handler);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refresh]);
+
 
   return {
     items,

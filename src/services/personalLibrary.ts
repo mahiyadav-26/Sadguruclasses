@@ -15,7 +15,7 @@ import {
 } from "../lib/personalLibraryDB";
 import { canAdd } from "../lib/personalLibraryQuota";
 import { waitForPlayerIdle } from "../lib/playerBusy";
-import { isResolvableStorageViewerUrl, resolveStorageBytes } from "@/lib/native/naveenStoragePdf";
+import { fetchDocumentBlob } from "@/lib/fetchDocumentBlob";
 import { downloadFileDB } from "../lib/indexedDB";
 import { cleanNotionUrl, isNotion } from "../lib/pdfViewerUrl";
 import { reportError } from "../lib/sentry";
@@ -79,6 +79,11 @@ function pickMaxFileBytes(): number {
   return 200 * 1024 * 1024;
 }
 const MAX_FILE_BYTES = pickMaxFileBytes();
+
+/** Per-file import limit for this session (device-RAM aware). */
+export function getMaxFileBytes(): number {
+  return MAX_FILE_BYTES;
+}
 
 /** Hole H — bridge timeout. A wedged native Filesystem.writeFile/appendFile
  *  must never stall the write queue forever. 30 s per chunk is generous
@@ -326,11 +331,12 @@ function singleFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return p;
 }
 
-/** Quota check that accounts for in-flight writes. Use this inside enqueueWrite. */
-async function canAddAware(size: number): Promise<{ ok: boolean; used: number; cap: number }> {
-  const { used, cap } = await canAdd(size);
-  return { ok: used + pendingBytes + size <= cap, used, cap };
+/** Device-space check that accounts for in-flight writes. Use inside enqueueWrite. */
+async function canAddAware(size: number): Promise<{ ok: boolean; used: number; free: number | null }> {
+  const { used, free } = await canAdd(size + pendingBytes);
+  return { ok: free === null ? true : free >= size + pendingBytes, used, free };
 }
+
 
 // ----- Folders -----
 
@@ -621,8 +627,12 @@ const webBlobUrlCache = new Map<string, string>();
 export async function getItemUri(id: string): Promise<string | null> {
   const rec = await itemDB.get(id);
   if (!rec) return null;
+  // Link items (and legacy URL-backed rows) resolve to their remote URL on
+  // every platform — they have no local bytes to look up.
+  if (/^https?:\/\//i.test(rec.local_path)) return rec.local_path;
   const fs = await getFS();
   if (!fs) {
+
     // Web: hand the stable item id to the PDF source hook. It loads the Blob
     // bytes directly from IndexedDB, avoiding fragile blob: URL re-fetches in
     // mobile Firefox / Android WebView.
@@ -660,7 +670,6 @@ export async function getItemUri(id: string): Promise<string | null> {
     webBlobUrlCache.set(id, url);
     return url;
   }
-  if (/^https?:\/\//i.test(rec.local_path)) return rec.local_path;
   try {
     const { uri } = await fs.Filesystem.getUri({
       path: rec.local_path,
@@ -726,13 +735,16 @@ export async function addFileToFolder(
   reserve(file.size);
   return enqueueWrite(async () => {
     try {
-      // Re-check quota inside the queue with the pending-bytes-aware helper.
+      // Re-check device space inside the queue with the pending-aware helper.
       const quota = await canAddAware(0); // size already reserved
       if (!quota.ok) {
         throw new Error(
-          `Library is full. Free up space (using ${Math.round(quota.used / 1024 / 1024)} MB of ${Math.round(quota.cap / 1024 / 1024)} MB).`
+          `Device is out of storage. Free up space on your phone and try again${
+            quota.free !== null ? ` (about ${Math.round(quota.free / 1024 / 1024)} MB free)` : ""
+          }.`
         );
       }
+
       const ext = extOf(file.name, file.type);
       // Pre-generate the id so we can embed it in the web sentinel path.
       const newId = uuid();
@@ -829,7 +841,7 @@ export async function addFilesToFolder(
       seen.add(key);
     } catch (err) {
       const msg = (err as Error)?.message || String(err);
-      if (/Library is full/i.test(msg)) {
+      if (/out of storage|Library is full/i.test(msg)) {
         result.skipped.push({ name: file.name, reason: "quota" });
       } else {
         result.failed.push({ name: file.name, error: msg });
@@ -845,6 +857,53 @@ export async function addFilesToFolder(
     await yieldToUi();
   }
   return result;
+}
+
+/**
+ * Add a *link* item — a normal library row whose bytes live remotely.
+ *
+ * Costs no storage and no memory: only the URL is written. Because it is a
+ * regular PersonalItem it inherits folders, move, reorder, rename, sort,
+ * multi-select and search from the rest of My Library.
+ */
+export async function addLinkToFolder(
+  folder_id: string,
+  link: { url: string; title: string; source: string; kind: string },
+): Promise<PersonalItem> {
+  return enqueueWrite(async () => {
+    const url = isNotion(link.url) ? cleanNotionUrl(link.url) : link.url;
+    const existing = (await itemDB.byFolder(folder_id)).find((it) => it.local_path === url);
+    if (existing) return existing;
+    const title = (link.title || "Link").replace(/\.[^.]+$/, "");
+    const ext = (link.kind || "LINK").toLowerCase();
+    const rec: PersonalItem = {
+      id: uuid(),
+      folder_id,
+      title,
+      file_name: /^(pdf|docx?|pptx?|xlsx?|csv|md|txt)$/i.test(ext) ? `${title}.${ext}` : `${title}.link`,
+      mime_type: "text/uri-list",
+      size_bytes: 0,
+      local_path: url,
+      source: "link",
+      added_at: new Date().toISOString(),
+      last_opened_at: null,
+      sort_index: await nextItemSortIndex(folder_id),
+      link_source: link.source,
+      link_kind: link.kind,
+    };
+    await itemDB.put(rec);
+    return rec;
+  });
+}
+
+/** Drop the link markers once an item is backed by real local bytes. */
+export async function clearLinkMarkers(id: string) {
+  const rec = await itemDB.get(id);
+  if (!rec) return;
+  delete rec.link_source;
+  delete rec.link_kind;
+  rec.source = "device";
+  await itemDB.put(rec);
 }
 
 
@@ -882,12 +941,11 @@ export async function addUrlToFolder(
       ? (await downloadFileDB.get(Number(dlId)))?.blob
       : plId
         ? (await fileDB.get(plId))?.blob
-        : isResolvableStorageViewerUrl(url)
-          ? await resolveStorageBytes(url)
-          : await fetch(url, { credentials: "omit" }).then((resp) => {
-              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-              return resp.blob();
-            });
+        // Same reach as the reader: storage resolution, pdf-proxy with the
+        // caller's token, and native HTTP on the APK. A bare fetch() here
+        // died with "Failed to fetch" on proxy-only / CORS-closed sources.
+        : await fetchDocumentBlob(url);
+
     if (!blob) throw new Error("Could not find saved PDF bytes");
     const sourceName = filename || title;
     const ext = extOf(sourceName, blob.type || "");
@@ -901,7 +959,7 @@ export async function addUrlToFolder(
     const quota = await canAddAware(0);
     if (!quota.ok) {
       release(file.size);
-      throw new Error(`Library is full. Free up space first.`);
+      throw new Error("Device is out of storage. Free up space on your phone and try again.");
     }
     try {
       if (file.size > MAX_FILE_BYTES) {
