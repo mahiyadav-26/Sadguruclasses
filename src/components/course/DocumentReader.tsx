@@ -16,6 +16,7 @@ import { readerRouteForUrl, traceReader, type ReaderHealthState, type ReaderRout
 import { cn } from "../../lib/utils";
 import { isGoogleDrive, googleDrivePdfProxyUrl } from "../../lib/pdfViewerUrl";
 import { isArchiveSource } from "../../lib/pdfSourceKind";
+import { isSyntheticPop } from "../../lib/reader/overlayHistory";
 
 
 
@@ -133,6 +134,9 @@ const DocumentReader = memo(
         window.history.pushState({ ...(window.history.state || {}), pdfFullscreen: true, overlay: true, readerToken: token }, "");
       } catch {}
       const onPop = () => {
+        // Nested overlay closing itself (autoscroll sheet "Done", notes sheet)
+        // fires a synthetic pop — it must not close the reader.
+        if (isSyntheticPop()) return;
         if (readerHistoryPoppedRef.current) return;
         readerHistoryPoppedRef.current = true;
         onBack();
