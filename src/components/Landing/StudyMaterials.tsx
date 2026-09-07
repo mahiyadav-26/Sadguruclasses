@@ -1,54 +1,65 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { Button } from "../ui/button";
+import materialsImage from "../../assets/landing/study-materials.jpg";
 
 const resources = [
-  { tag: "Notes", title: "Class 9–12 English — Complete Grammar Notes", desc: "Chapter-wise summaries, examples, and exam-ready practice sets." },
-  { tag: "Practice", title: "Spoken English Daily Workbook", desc: "1,200+ real-life sentences graded by difficulty, with Hindi meanings." },
-  { tag: "Mock Tests", title: "CG Lecturer Competition — Full Mock Series", desc: "Timed mock papers with detailed analysis and topic-wise scoring." },
+  { tag: "Notes", title: "Class 9–12 English — Complete Grammar Notes", desc: "Chapter-wise summaries, examples aur exam-ready practice sets." },
+  { tag: "Practice", title: "Spoken English Daily Workbook", desc: "1,200+ real-life sentences, Hindi meaning ke saath." },
+  { tag: "Mock Tests", title: "CG Lecturer — Full Mock Series", desc: "Timed mock papers, detailed analysis aur topic-wise scoring." },
 ];
 
 const StudyMaterials = memo(() => (
-  <section className="py-20 md:py-28 bg-muted/40 border-b border-border/60">
-    <div className="container mx-auto max-w-7xl px-6 lg:px-10">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-14">
-        <div className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.18em] text-accent font-medium mb-3">Free Resources</p>
-          <h2
-            className="font-serif text-4xl md:text-5xl text-foreground leading-[1.1]"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            Notes, workbooks, and mocks — on the house.
-          </h2>
-        </div>
-        <Link
-          to="/books"
-          className="text-sm font-medium text-foreground hover:text-accent transition-colors inline-flex items-center gap-1 self-start md:self-auto"
-        >
-          Browse all resources <ArrowUpRight className="h-4 w-4" />
-        </Link>
+  <section className="py-16 md:py-20 bg-background">
+    <div className="container mx-auto max-w-5xl px-5 md:px-8">
+      <div className="text-center max-w-2xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+          Premium Study Materials
+        </h2>
+        <p className="mt-3 text-base md:text-lg text-muted-foreground">
+          Notes, workbooks aur mock tests — bilkul free.
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-px bg-border">
-        {resources.map((r, i) => (
+      <div className="mt-10 grid gap-4 md:grid-cols-3">
+        {resources.map((r) => (
           <Link
-            key={i}
+            key={r.title}
             to="/books"
-            className="group bg-background p-7 md:p-8 flex flex-col gap-4 hover:bg-muted/40 transition-colors"
+            className="rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
-            <span className="text-xs uppercase tracking-wider text-accent font-medium">{r.tag}</span>
-            <h3
-              className="font-serif text-xl md:text-2xl text-foreground leading-snug group-hover:text-accent transition-colors"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
-              {r.title}
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{r.desc}</p>
-            <span className="text-sm font-medium text-foreground mt-auto inline-flex items-center gap-1 pt-3">
-              Read more <ArrowUpRight className="h-4 w-4" />
+            <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
+              {r.tag}
             </span>
+            <h3 className="mt-4 text-lg font-bold text-foreground leading-snug">{r.title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{r.desc}</p>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-card shadow-sm grid md:grid-cols-2">
+        <img
+          src={materialsImage}
+          alt="Notes, practice papers aur tablet ke saath study desk"
+          loading="lazy"
+          width={1280}
+          height={800}
+          className="w-full h-full object-cover aspect-[16/10]"
+        />
+        <div className="p-8 flex flex-col justify-center gap-4">
+          <h3 className="text-2xl font-extrabold text-foreground leading-tight">
+            Sab resources ek jagah, bilkul free
+          </h3>
+          <p className="text-muted-foreground">
+            PDF notes download karein, app mein hi padhein aur test dekar apni taiyari check karein.
+          </p>
+          <Link to="/books" className="self-start">
+            <Button size="lg" className="rounded-xl font-bold gap-2">
+              Browse Resources <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   </section>

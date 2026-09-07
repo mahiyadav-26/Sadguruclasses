@@ -1,35 +1,69 @@
 import { memo } from "react";
-import { BookOpen, Video, Users, Award } from "lucide-react";
+import { BookOpen, Video, Users, CalendarCheck, Award, MessageCircle } from "lucide-react";
 
 const features = [
-  { icon: BookOpen, title: "Structured Curriculum", desc: "NCERT-aligned syllabus for Class 9–12, plus CG Lecturer competition prep." },
-  { icon: Video, title: "Live + Recorded", desc: "Weekly live classes plus full HD recordings you can revisit anytime." },
-  { icon: Users, title: "Expert Mentors", desc: "Senior educators and subject specialists teach every module." },
-  { icon: Award, title: "Proven Results", desc: "Board toppers and successful CG Lecturer aspirants every year." },
+  {
+    icon: BookOpen,
+    tint: "bg-primary/10 text-primary",
+    title: "Interactive Courses",
+    desc: "Chapter-wise curriculum, Hindi mein samjhaya — notes, practice aur quizzes ke saath.",
+  },
+  {
+    icon: Video,
+    tint: "bg-rose-500/10 text-rose-600",
+    title: "Video Lessons",
+    desc: "HD recorded lectures jo aap kabhi bhi, kahin bhi dobara dekh sakte hain.",
+  },
+  {
+    icon: Users,
+    tint: "bg-emerald-500/10 text-emerald-600",
+    title: "Expert Teachers",
+    desc: "Ramchandra Sir aur experienced faculty — har concept simple aur yaad rehne wala.",
+  },
+  {
+    icon: CalendarCheck,
+    tint: "bg-amber-500/10 text-amber-600",
+    title: "Live Classes & Tests",
+    desc: "Weekly live batches aur regular tests taaki taiyari track par rahe.",
+  },
+  {
+    icon: Award,
+    tint: "bg-violet-500/10 text-violet-600",
+    title: "Progress Tracking",
+    desc: "Apna attendance, test score aur course progress ek hi dashboard par dekhein.",
+  },
+  {
+    icon: MessageCircle,
+    tint: "bg-sky-500/10 text-sky-600",
+    title: "Doubt Solving",
+    desc: "Doubts section aur WhatsApp support — sawaal poochhein, jawab turant paayein.",
+  },
 ];
 
 const Features = memo(() => (
-  <section className="py-20 md:py-28 bg-muted/40 border-b border-border/60">
-    <div className="container mx-auto max-w-7xl px-6 lg:px-10">
-      <div className="max-w-2xl mb-14">
-        <p className="text-xs uppercase tracking-[0.18em] text-accent font-medium mb-3">Why Sadguru Coaching Classes</p>
-        <h2
-          className="font-serif text-4xl md:text-5xl text-foreground leading-[1.1]"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          Everything serious students need — nothing they don't.
+  <section aria-label="Platform features" className="py-16 md:py-20 bg-background">
+    <div className="container mx-auto max-w-5xl px-5 md:px-8">
+      <div className="text-center max-w-2xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+          Everything You Need
         </h2>
+        <p className="mt-3 text-base md:text-lg text-muted-foreground">
+          Ek complete learning platform — padhai, practice aur guidance sab ek jagah.
+        </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border">
-        {features.map(({ icon: Icon, title, desc }, i) => (
-          <div key={i} className="bg-background p-7 md:p-8 space-y-4">
-            <Icon className="h-6 w-6 text-accent" strokeWidth={1.6} />
-            <h3 className="font-serif text-xl text-foreground" style={{ fontFamily: "var(--font-serif)" }}>
-              {title}
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-          </div>
+      <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {features.map(({ icon: Icon, tint, title, desc }) => (
+          <article
+            key={title}
+            className="rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <span className={`h-12 w-12 rounded-xl flex items-center justify-center ${tint}`}>
+              <Icon className="h-6 w-6" aria-hidden />
+            </span>
+            <h3 className="mt-5 text-lg font-bold text-foreground">{title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{desc}</p>
+          </article>
         ))}
       </div>
     </div>

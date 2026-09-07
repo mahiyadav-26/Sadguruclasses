@@ -18,6 +18,10 @@ const Footer = lazyWithRetry(() => import("../components/Landing/Footer"));
 const ExamTracks = lazyWithRetry(() => import("../components/Landing/ExamTracks"));
 const GraduationBanner = lazyWithRetry(() => import("../components/Landing/GraduationBanner"));
 const Testimonials = lazyWithRetry(() => import("../components/Landing/Testimonials"));
+const StreamsWeOffer = lazyWithRetry(() => import("../components/Landing/StreamsWeOffer"));
+const Features = lazyWithRetry(() => import("../components/Landing/Features"));
+const OnlineLearning = lazyWithRetry(() => import("../components/Landing/OnlineLearning"));
+const StudyMaterials = lazyWithRetry(() => import("../components/Landing/StudyMaterials"));
 import TrustStrip from "../components/Landing/TrustStrip";
 import StickyMobileCTA from "../components/Landing/StickyMobileCTA";
 import WhatsAppFloat from "../components/common/WhatsAppFloat";
@@ -191,12 +195,16 @@ const Index = () => {
           <HeroCarousel />
         </section>
         <Hero data={heroData} stats={heroStats} />
+        <StreamsWeOffer />
+        <Features />
+        <WhyChooseUs />
+        <OnlineLearning />
+        <StudyMaterials />
         <TrustStrip />
         <Suspense fallback={<div className="min-h-[200px]" aria-hidden />}>
           <section id="exam-tracks" aria-label="Exam batches"><ExamTracks /></section>
           <FreeContent />
           <Testimonials />
-          <section id="why-choose-us" aria-label="Our method"><WhyChooseUs /></section>
           <YouTubeStrip />
           <GraduationBanner />
           <section id="community" aria-label="Join our community"><CommunityStrip /></section>

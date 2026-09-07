@@ -1,43 +1,50 @@
 import { memo } from "react";
+import { Check } from "lucide-react";
+import mentorImage from "../../assets/landing/mentor-portrait.jpg";
 
 const points = [
-  { n: "01", t: "Hindi-medium friendly", d: "Har lesson Hindi mein samjhaya — jhijhak khatam, seekhna aasan." },
-  { n: "02", t: "Practical spoken English", d: "Real daily-use sentences, roleplay aur situations — sirf grammar rules nahin." },
-  { n: "03", t: "Daily practice + doubts", d: "Roz ka chota task, WhatsApp/Telegram par live doubt-clearing Ramchandra Sir ke saath." },
-  { n: "04", t: "Board + interview ready", d: "Class 9–12 English, SSC/bank English aur job-interview confidence — ek jagah." },
+  { t: "Hindi-medium friendly", d: "Har lesson Hindi mein samjhaya — jhijhak khatam, seekhna aasan." },
+  { t: "Practical spoken English", d: "Real daily-use sentences, roleplay aur situations — sirf grammar rules nahin." },
+  { t: "Daily practice + doubts", d: "Roz ka chota task aur live doubt-clearing Ramchandra Sir ke saath." },
+  { t: "Board + interview ready", d: "Class 9–12 English, competitive English aur interview confidence — ek jagah." },
 ];
 
 const WhyChooseUs = memo(() => (
-  <section className="py-20 md:py-28 bg-background border-b border-border/60">
-    <div className="container mx-auto max-w-7xl px-6 lg:px-10">
-      <div className="max-w-4xl space-y-10">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-accent font-medium mb-3">Our method</p>
-            <h2
-              className="font-serif text-4xl md:text-5xl text-foreground leading-[1.1]"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
-              English seekhne ka aasan raasta.
-            </h2>
-            <p className="text-lg text-muted-foreground mt-5 leading-relaxed">
-              Traditional discipline + modern teaching + Hindi explanation. Har din 15 minute
-              — aur aap khud farak dekhenge.
-            </p>
-          </div>
+  <section className="py-16 md:py-20 bg-background">
+    <div className="container mx-auto max-w-5xl px-5 md:px-8">
+      <div className="grid gap-10 md:grid-cols-2 md:items-center">
+        <div className="overflow-hidden rounded-3xl border border-border shadow-sm order-last md:order-first">
+          <img
+            src={mentorImage}
+            alt="Ramchandra Sir class lete hue"
+            loading="lazy"
+            className="w-full h-full object-cover aspect-[4/3]"
+          />
+        </div>
 
-          <ul className="divide-y divide-border/60 border-y border-border/60">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground leading-tight">
+            Why Choose Sadguru Coaching Classes?
+          </h2>
+          <p className="mt-4 text-base md:text-lg text-muted-foreground leading-relaxed">
+            Traditional discipline + modern teaching + Hindi explanation. Har din 15 minute — aur
+            aap khud farak dekhenge.
+          </p>
+
+          <ul className="mt-7 space-y-4">
             {points.map((p) => (
-              <li key={p.n} className="py-6 grid grid-cols-[auto_1fr] gap-6 items-baseline">
-                <span className="font-serif text-2xl text-accent tabular-nums" style={{ fontFamily: "var(--font-serif)" }}>
-                  {p.n}
+              <li key={p.t} className="flex gap-3">
+                <span className="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <Check className="h-3.5 w-3.5" aria-hidden />
                 </span>
                 <div>
-                  <h3 className="font-medium text-lg text-foreground mb-1">{p.t}</h3>
+                  <h3 className="font-bold text-foreground">{p.t}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{p.d}</p>
                 </div>
               </li>
             ))}
           </ul>
+        </div>
       </div>
     </div>
   </section>
