@@ -23,6 +23,7 @@ import {
   Plus, Pin, Heart, MessageCircle, Trash2,
   ExternalLink, Loader2, Users, Send, FileText,
 } from "lucide-react";
+import { isSyntheticPop } from "../lib/reader/overlayHistory";
 
 type Post = {
   id: string;
@@ -143,7 +144,12 @@ const Community = () => {
     if (!notionPreview) return;
     // Push a history sentinel so hardware back closes the preview, not the page.
     try { window.history.pushState({ pdfFullscreen: true }, ""); } catch {}
-    const onPop = () => setNotionPreview(null);
+    const onPop = () => {
+      // Ignore pops caused by a nested overlay closing itself.
+      if (isSyntheticPop()) return;
+      if (window.history.state?.pdfFullscreen) return;
+      setNotionPreview(null);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [notionPreview]);
