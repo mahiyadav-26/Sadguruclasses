@@ -221,7 +221,7 @@ function LazyPage({
 
   // Fully blank sheet (trailing page of a Sheets export) — collapse it.
   if (fit?.blank) {
-    return <div ref={ref} data-page={pageNumber} data-blank="true" className="mx-auto mb-2 h-px w-full bg-border/40" />;
+    return <div ref={ref} data-page={pageNumber} data-blank="true" className="mx-auto h-0 w-full overflow-hidden" />;
   }
 
   if (fit) {
@@ -229,7 +229,7 @@ function LazyPage({
       <div
         ref={ref}
         data-page={pageNumber}
-        className="mx-auto mb-3 overflow-hidden"
+        className="mx-auto block overflow-hidden"
         style={{ width: fit.cropWidth, height: fit.cropHeight }}
       >
         <div style={{ transform: `translate(${-fit.offsetX}px, ${-fit.offsetY}px)`, width: fit.renderWidth }}>
@@ -240,7 +240,7 @@ function LazyPage({
             onRenderSuccess={() => onRendered(pageNumber)}
             renderAnnotationLayer
             renderTextLayer={false}
-            loading={<div style={{ width: fit.cropWidth, height: fit.cropHeight }} className="bg-background" />}
+            loading={<div style={{ width: fit.cropWidth, height: fit.cropHeight }} className="bg-white" />}
           />
         </div>
       </div>
@@ -252,7 +252,7 @@ function LazyPage({
       ref={ref}
       data-page={pageNumber}
       data-page-rendered={render ? "true" : "false"}
-      className="mx-auto mb-3 flex w-full justify-start overflow-hidden"
+      className="mx-auto flex w-full justify-start overflow-hidden"
       style={{ maxWidth: width }}
     >
       {render ? (
@@ -264,10 +264,10 @@ function LazyPage({
           onRenderSuccess={() => onRendered(pageNumber)}
           renderAnnotationLayer
           renderTextLayer={false}
-            loading={<div style={{ width, height: placeholderHeight }} className="bg-background" />}
+            loading={<div style={{ width, height: placeholderHeight }} className="bg-white" />}
         />
       ) : (
-        <div style={{ width, height: placeholderHeight }} className="rounded bg-muted/60" />
+        <div style={{ width, height: placeholderHeight }} className="bg-white" />
       )}
     </div>
   );
@@ -977,7 +977,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       <div
         ref={scrollRef}
         data-archive-virtualized={isArchiveSource(src) ? "true" : undefined}
-        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-neutral-100 px-2 [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-white [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
         onClick={onSurfaceTap}
         style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x pan-y pinch-zoom" }}
       >
@@ -1051,7 +1051,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
                 </div>
               </div>
             }
-            className="py-3"
+            className=""
           >
             <div ref={pagesWrapperRef} style={{ transformOrigin: "top center" }}>
               {!error &&
