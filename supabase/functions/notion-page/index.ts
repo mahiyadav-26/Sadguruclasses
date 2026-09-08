@@ -161,19 +161,83 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Blocks the reader can open directly as a document.
-    const documents = [
-      ...fileBlocks
+    // ── Link-only documents ───────────────────────────────────────
+    // Many teacher pages are not file blocks at all: they are an image or a
+    // single line of text linking out to the real file ("neeche image par click
+    // karke download karein"). Notion keeps those URLs in rich-text link
+    // annotations (`["a", url]`) or in `format.link` on an image block, so
+    // neither the file-block scan nor the embed scan above found them and the
+    // lesson silently degraded to "Web page" mode. AUDIT 2026-09-08.
+    const DOC_URL_RE =
+      /(drive\.google\.com|docs\.google\.com|\.pdf(?:[?#]|$)|cdn\.jsdelivr\.net|archive\.org|prod-files-secure|secure\.notion-static\.com|file\.notion\.so|s3\.us-west-2\.amazonaws\.com)/i;
+    const linked: { id: string; name: string; url: string }[] = [];
+    const seenLinked = new Set<string>();
+    for (const [id, entry] of Object.entries(recordMap.block ?? {})) {
+      const raw = (entry as { value?: unknown })?.value as
+        | { value?: Record<string, unknown> }
+        | Record<string, unknown>
+        | undefined;
+      const value = ((raw as { value?: Record<string, unknown> })?.value ?? raw) as
+        | Record<string, unknown>
+        | undefined;
+      if (!value) continue;
+      const props = (value.properties ?? {}) as Record<string, unknown>;
+      const format = (value.format ?? {}) as Record<string, unknown>;
+      const candidates: string[] = [];
+      // Rich-text link annotations across every text-bearing property.
+      for (const prop of Object.values(props)) {
+        if (!Array.isArray(prop)) continue;
+        for (const segment of prop as unknown[]) {
+          if (!Array.isArray(segment)) continue;
+          const annotations = segment[1];
+          if (!Array.isArray(annotations)) continue;
+          for (const annotation of annotations as unknown[]) {
+            if (!Array.isArray(annotation)) continue;
+            if (annotation[0] === "a" && typeof annotation[1] === "string") {
+              candidates.push(annotation[1] as string);
+            }
+          }
+        }
+      }
+      // Image / caption blocks can carry the download target on the format.
+      for (const key of ["link", "bookmark_url", "original_url"]) {
+        const v = format[key];
+        if (typeof v === "string") candidates.push(v);
+      }
+      const name = (props.title as string[][] | undefined)?.[0]?.[0] ?? "";
+      for (const candidate of candidates) {
+        if (!/^https?:/i.test(candidate)) continue;
+        if (!DOC_URL_RE.test(candidate)) continue;
+        if (seenLinked.has(candidate)) continue;
+        seenLinked.add(candidate);
+        linked.push({ id, name, url: candidate });
+      }
+    }
+
+    // Documents the reader can open directly, best first. The client opens
+    // `bestDocument` in the normal pdf.js reader instead of the page view.
+    const documents: { id: string; name: string; url: string }[] = [];
+    const seenDoc = new Set<string>();
+    const pushDocs = (list: { id: string; name: string; url: string }[]) => {
+      for (const doc of list) {
+        if (!doc.url || seenDoc.has(doc.url)) continue;
+        seenDoc.add(doc.url);
+        documents.push(doc);
+      }
+    };
+    pushDocs(
+      fileBlocks
         .filter((b) => b.type === "pdf" || b.type === "file")
         .map(({ id, name, source }) => ({ id, name, url: source })),
-      // Drive / Docs / direct-PDF embeds are documents too — the app's own
-      // URL router knows how to turn each of these into PDF bytes.
-      ...embedded.filter(({ url }) =>
-        /drive\.google\.com|docs\.google\.com|\.pdf(?:[?#]|$)/i.test(url)
-      ),
-    ];
+    );
+    // Drive / Docs / direct-PDF embeds are documents too — the app's own
+    // URL router knows how to turn each of these into PDF bytes.
+    pushDocs(embedded.filter(({ url }) => DOC_URL_RE.test(url)));
+    pushDocs(linked);
 
-    return new Response(JSON.stringify({ recordMap, documents }), {
+    return new Response(
+      JSON.stringify({ recordMap, documents, bestDocument: documents[0] ?? null }),
+      {
       status: 200,
       headers: {
         ...corsHeaders,
@@ -183,8 +247,9 @@ Deno.serve(async (req) => {
         "Cache-Control": "public, max-age=300, s-maxage=900, stale-while-revalidate=900",
         "CDN-Cache-Control": "public, max-age=900, stale-while-revalidate=900",
         "Cache-Tag": `notion:${pageId}`,
+        },
       },
-    });
+    );
   } catch (err) {
     console.error("notion-page error:", err);
     return new Response(JSON.stringify({ error: "Upstream fetch failed" }), {
