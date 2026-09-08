@@ -578,7 +578,6 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
           // ("unexpected end of stream", "connection reset") — treat that as a
           // soft failure and fall through to the browser fetch on the same
           // attempt instead of surfacing it as a reader error.
-          let nativeFailed: Error | null = null;
           try {
             const nativeBlob = await requestPdfViaNativeHttp(attemptUrl, { signal, headers: authHeaders });
             if (nativeBlob && nativeBlob.size > 0) return nativeBlob;
@@ -588,8 +587,8 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
             // Definitive server answers (403/404/415) are not worth a second
             // request through the WebView — bubble up for the friendly message.
             if (nStatus === 403 || nStatus === 404 || nStatus === 415) throw nativeErr;
-            nativeFailed = nativeErr instanceof Error ? nativeErr : new Error(String(nativeErr));
-            traceReader(route, "retrying", "byte-fallback-native-soft-fail", { attempt, message: nativeFailed.message.slice(0, 120) });
+            const nativeMsg = nativeErr instanceof Error ? nativeErr.message : String(nativeErr);
+            traceReader(route, "retrying", "byte-fallback-native-soft-fail", { attempt, message: nativeMsg.slice(0, 120) });
           }
           if (signal.aborted) throw abortErrorForReader();
           const res = await fetch(attemptUrl, {
