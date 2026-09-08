@@ -269,7 +269,20 @@ async function ensureCacheBucketConfigured() { void bootstrapAttempted; }
 
 
 
-function recordMetric(row: { event: string; drive_id?: string | null; tier?: string | null; last_status?: number | null; last_content_type?: string | null }) {
+function recordMetric(row: {
+  event: string;
+  drive_id?: string | null;
+  tier?: string | null;
+  last_status?: number | null;
+  last_content_type?: string | null;
+  // AUDIT 2026-09-08: drive_id was NULL on 1,474 of 1,509 rows, so a slow or
+  // failed open could never be traced back to a lecture. Every branch now
+  // reports the lesson it served plus how long resolve vs stream took.
+  lesson_id?: string | null;
+  source_kind?: string | null;
+  resolve_ms?: number | null;
+  stream_ms?: number | null;
+}) {
   if (!metricsClient) return;
   // Never let a logging failure surface to the caller.
   try {
@@ -412,7 +425,10 @@ Deno.serve(async (req) => {
           headers: headersWithCors({ "Content-Type": "application/json" }),
         });
       }
-      const target = await archiveNodeUrlFor(itemId);
+      const lessonIdParam = input.searchParams.get("lesson_id");
+      const archiveStartedAt = Date.now();
+      const { url: target, resolveMs: archiveResolveMs } = await archiveNodeUrlFor(itemId);
+      if (target && archiveResolveMs > 0) prefetchArchiveRanges(target);
       if (!target) {
         return new Response(JSON.stringify({
           error: "No PDF file found in this archive.org item.",
@@ -432,7 +448,8 @@ Deno.serve(async (req) => {
       if ([403, 404, 410].includes(upstreamArchive.status)) {
         await upstreamArchive.body?.cancel().catch(() => {});
         archiveNodeCache.delete(itemId);
-        const retryTarget = await archiveNodeUrlFor(itemId);
+        await dropStoredResolution(`archive:${itemId}`);
+        const { url: retryTarget } = await archiveNodeUrlFor(itemId);
         if (retryTarget) {
           upstreamArchive = await fetchRemoteFile(
             retryTarget,
@@ -446,6 +463,10 @@ Deno.serve(async (req) => {
         tier: "archive",
         last_status: upstreamArchive.status,
         last_content_type: upstreamArchive.headers.get("content-type"),
+        lesson_id: lessonIdParam,
+        source_kind: "archive",
+        resolve_ms: archiveResolveMs,
+        stream_ms: Date.now() - archiveStartedAt - archiveResolveMs,
       });
       return await relayUpstream(upstreamArchive, req.method, req.headers.get("range"));
     }
@@ -771,15 +792,93 @@ async function resolveArchiveNodeUrl(downloadUrl: string): Promise<string> {
   return currentUrl;
 }
 
+/**
+ * Durable resolution cache (pdf_source_resolutions).
+ *
+ * AUDIT 2026-09-08: archive.org lectures took 35-45s to first page. The
+ * in-isolate Map above only helps within one warm worker; every cold isolate
+ * re-ran the /metadata lookup AND the download→ia*.us.archive.org redirect
+ * walk before a single byte moved, and Supabase recycles isolates constantly.
+ * Persisting item→node in Postgres makes that cost once per 6h per item
+ * globally instead of once per isolate.
+ */
+const ARCHIVE_DB_TTL_MS = 6 * 60 * 60 * 1000;
+
+async function getStoredResolution(key: string): Promise<string | null> {
+  if (!adminClient) return null;
+  try {
+    const { data, error } = await adminClient
+      .from("pdf_source_resolutions")
+      .select("resolved_url, expires_at")
+      .eq("source_key", key)
+      .maybeSingle();
+    if (error || !data) return null;
+    if (new Date(data.expires_at).getTime() <= Date.now()) return null;
+    return data.resolved_url as string;
+  } catch { return null; }
+}
+
+async function storeResolution(key: string, resolvedUrl: string, resolveMs: number): Promise<void> {
+  if (!adminClient) return;
+  try {
+    await adminClient.from("pdf_source_resolutions").upsert({
+      source_key: key,
+      resolved_url: resolvedUrl,
+      resolve_ms: resolveMs,
+      expires_at: new Date(Date.now() + ARCHIVE_DB_TTL_MS).toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "source_key" });
+  } catch (err) { console.warn("[pdf-proxy:resolution]", err); }
+}
+
+async function dropStoredResolution(key: string): Promise<void> {
+  if (!adminClient) return;
+  try {
+    await adminClient.from("pdf_source_resolutions").delete().eq("source_key", key);
+  } catch { /* best effort */ }
+}
+
 /** Cached resolve: item id → direct CDN node URL for its PDF file. */
-async function archiveNodeUrlFor(itemId: string): Promise<string | null> {
+async function archiveNodeUrlFor(itemId: string): Promise<{ url: string | null; resolveMs: number }> {
   const cached = getCachedArchiveNode(itemId);
-  if (cached) return cached;
+  if (cached) return { url: cached, resolveMs: 0 };
+
+  const key = `archive:${itemId}`;
+  const stored = await getStoredResolution(key);
+  if (stored) {
+    setCachedArchiveNode(itemId, stored);
+    return { url: stored, resolveMs: 0 };
+  }
+
+  const startedAt = Date.now();
   const target = await resolveArchivePdfUrl(itemId);
-  if (!target) return null;
+  if (!target) return { url: null, resolveMs: Date.now() - startedAt };
   const node = await resolveArchiveNodeUrl(target);
+  const resolveMs = Date.now() - startedAt;
   setCachedArchiveNode(itemId, node);
-  return node;
+  await storeResolution(key, node, resolveMs);
+  return { url: node, resolveMs };
+}
+
+/**
+ * Warm the byte ranges pdf.js asks for first (header + trailer/xref at the tail)
+ * so the "Reading document index" phase hits a warm CDN node instead of cold
+ * storage. Fire-and-forget; failures are irrelevant to the response.
+ */
+function prefetchArchiveRanges(nodeUrl: string): void {
+  const warm = async () => {
+    for (const range of ["bytes=0-262143", "bytes=-262144"]) {
+      try {
+        const res = await fetch(nodeUrl, {
+          headers: { Range: range, Accept: "application/pdf,*/*;q=0.1" },
+          signal: timeoutSignal(10_000),
+        });
+        await res.body?.cancel().catch(() => {});
+      } catch { /* warming only */ }
+    }
+  };
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(warm()); else void warm();
 }
 
 

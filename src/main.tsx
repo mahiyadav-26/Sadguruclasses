@@ -29,8 +29,20 @@ try {
 // we re-emit the buffered entries so they appear in the in-app panel.
 // Gated on a localStorage flag that AdminEruda.tsx writes after auth
 // resolves admin = true. Non-admins never trigger this path.
+// AUDIT 2026-09-08: the debug console shipped to production and any student
+// could enable it by setting one localStorage key, exposing app internals and
+// network traffic. The flag is now only honoured in dev builds or in a QA build
+// explicitly built with VITE_ENABLE_ERUDA=true, so the eruda chunk is dropped
+// from the production bundle entirely.
+const ERUDA_ALLOWED =
+  import.meta.env.DEV === true || import.meta.env.VITE_ENABLE_ERUDA === "true";
+
 try {
-  if (typeof window !== "undefined" && localStorage.getItem("nb_admin_eruda") === "1") {
+  if (
+    ERUDA_ALLOWED &&
+    typeof window !== "undefined" &&
+    localStorage.getItem("nb_admin_eruda") === "1"
+  ) {
     type LogEntry = { level: "log" | "info" | "warn" | "error" | "debug"; args: unknown[]; t: number };
     const buffer: LogEntry[] = [];
     const MAX_BUFFER = 500;
@@ -140,7 +152,7 @@ initNativeDebug();
 // Eruda — legacy QA flag path. Kept for non-admin QA builds that ship
 // with VITE_ENABLE_ERUDA=true. Admin-gated path lives in AdminEruda.tsx
 // + the early-boot block at the top of this file.
-if (import.meta.env.VITE_ENABLE_ERUDA === "true") {
+if (ERUDA_ALLOWED && import.meta.env.VITE_ENABLE_ERUDA === "true") {
   import("eruda").then(({ default: eruda }) => {
     try {
       if (!(window as unknown as { __nb_eruda_loaded?: boolean }).__nb_eruda_loaded) {

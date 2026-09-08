@@ -3,11 +3,36 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 import { isRateLimited, rateLimitedResponse } from "../_shared/rateLimit.ts";
 
 
+// AUDIT 2026-09-08: production was reporting a blocked CORS preflight plus a
+// 400 on every page load, which made the device/session limit unenforced. Two
+// root causes, both fixed here:
+//   1. Any throw below (missing env key, Postgres error, bad JSON) escaped the
+//      handler, so Deno returned a bare 500 WITHOUT the CORS headers - the
+//      browser then reports it as a CORS failure and the real cause is
+//      invisible. Everything now runs inside handle() wrapped in try/catch that
+//      always answers with CORS headers attached.
+//   2. SUPABASE_ANON_KEY is not set on projects provisioned with publishable
+//      keys, so createClient() threw on the first request. Falls back to
+//      SUPABASE_PUBLISHABLE_KEY.
 Deno.serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req);
+  // Preflight is answered before auth, body parsing, or env reads so a bad
+  // request can never surface to the browser as a CORS error.
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  try {
+    return await handle(req, corsHeaders);
+  } catch (err) {
+    console.error("manage-session unhandled error:", err);
+    return new Response(
+      JSON.stringify({ error: "session_service_error", detail: String(err) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
+
+async function handle(req: Request, corsHeaders: Record<string, string>): Promise<Response> {
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -18,9 +43,26 @@ Deno.serve(async (req) => {
   }
 
   // Anon client to verify the user's JWT
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const publicKey =
+    Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !publicKey || !serviceKey) {
+    const missing = [
+      !supabaseUrl && "SUPABASE_URL",
+      !publicKey && "SUPABASE_ANON_KEY/SUPABASE_PUBLISHABLE_KEY",
+      !serviceKey && "SUPABASE_SERVICE_ROLE_KEY",
+    ].filter(Boolean);
+    console.error("manage-session missing env:", missing.join(", "));
+    return new Response(
+      JSON.stringify({ error: "session_service_misconfigured", missing }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const anonClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
+    supabaseUrl,
+    publicKey,
     { global: { headers: { Authorization: authHeader } } }
   );
 
@@ -35,10 +77,7 @@ Deno.serve(async (req) => {
   }
 
   // Service role client for privileged operations (bypass RLS)
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  const admin = createClient(supabaseUrl, serviceKey);
 
   const body = await req.json().catch(() => ({}));
   const { action, session_token, session_id, device_type, user_agent } = body;
@@ -249,8 +288,14 @@ Deno.serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify({ error: "Unknown action" }), {
-    status: 400,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-});
+  // Name the offending action so the next production 400 is self-explaining
+  // instead of an opaque failure the browser blames on CORS.
+  return new Response(
+    JSON.stringify({
+      error: "unknown_action",
+      received: typeof action === "string" ? action : null,
+      supported: ["create", "heartbeat", "terminate", "validate"],
+    }),
+    { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}

@@ -27,6 +27,16 @@ export default function AdminEruda() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    // AUDIT 2026-09-08: never mount the debug console in a production build,
+    // even for an admin — its assets were loading on student lesson pages.
+    // Dev builds and QA builds with VITE_ENABLE_ERUDA=true keep it.
+    const erudaAllowed =
+      import.meta.env.DEV === true || import.meta.env.VITE_ENABLE_ERUDA === "true";
+    if (!erudaAllowed) {
+      safeRemove(ERUDA_FLAG);
+      return;
+    }
+
     // If user is no longer admin (signed out / role revoked) clear the flag
     // so non-admins on a shared device don't keep getting Eruda on reload.
     if (!isAdmin) {

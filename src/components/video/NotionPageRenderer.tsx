@@ -62,6 +62,7 @@ export default function NotionPageRenderer({ url, title, onClose, onReady, onDoc
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
   const [documents, setDocuments] = useState<{ id: string; name: string; url: string }[]>([]);
+  const [bestDocument, setBestDocument] = useState<{ id: string; name: string; url: string } | null>(null);
   // Track in-flight blob URL + revoke timer so we can release memory immediately
   // if the user navigates away before the 30 s revoke fires (10-40 MB PDFs).
   const pendingBlobUrlRef = useRef<string | null>(null);
@@ -259,8 +260,13 @@ export default function NotionPageRenderer({ url, title, onClose, onReady, onDoc
       }
       traceReader("notion", "ready", "notion-fetch-success", { blocks: Object.keys(recordMap.block).length });
       setRecordMap(recordMap as Parameters<typeof setRecordMap>[0]);
-      const docs = (data as { documents?: { id: string; name: string; url: string }[] })?.documents ?? [];
+      const payload = data as {
+        documents?: { id: string; name: string; url: string }[];
+        bestDocument?: { id: string; name: string; url: string } | null;
+      };
+      const docs = payload?.documents ?? [];
       setDocuments(docs);
+      setBestDocument(payload?.bestDocument ?? docs[0] ?? null);
       window.clearTimeout(timeout);
     })();
 
@@ -286,13 +292,21 @@ export default function NotionPageRenderer({ url, title, onClose, onReady, onDoc
   // A Notion page that is just a wrapper around one attached/embedded document
   // opens straight in the PDF reader — Notion's own embed renders as a blank
   // box inside our WebView, which is what students reported as a broken PDF.
-  const soleDocument = documents.length === 1 ? documents[0] : null;
+  // AUDIT 2026-09-08: the old rule required EXACTLY one document and at most one
+  // text block, so a wrapper page with a heading plus a "click to download"
+  // line (or two links) stayed in web-page mode and the student never saw a
+  // PDF. Any page whose own content is thin now hands its best document to the
+  // reader; content-rich pages still render as a page with a document list.
+  const CONTENT_BLOCK_THRESHOLD = 4;
   useEffect(() => {
-    if (!onDocument || !soleDocument || !recordMap) return;
-    if (textBlockCount(recordMap) > 1) return;
-    traceReader("notion", "ready", "notion-document-fastpath", { url: soleDocument.url.slice(0, 160) });
-    onDocument(soleDocument.url);
-  }, [onDocument, soleDocument, recordMap]);
+    if (!onDocument || !bestDocument || !recordMap) return;
+    if (textBlockCount(recordMap) > CONTENT_BLOCK_THRESHOLD) return;
+    traceReader("notion", "ready", "notion-document-fastpath", {
+      url: bestDocument.url.slice(0, 160),
+      documents: documents.length,
+    });
+    onDocument(bestDocument.url);
+  }, [onDocument, bestDocument, documents.length, recordMap]);
 
   if (error) {
     return <FallbackCard url={activeUrl} title={title} reason={error} />;
