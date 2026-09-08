@@ -135,3 +135,100 @@ export async function measureContentBox(page: AnyPage): Promise<ContentBox | nul
     return null;
   }
 }
+
+/**
+ * Ink bounding box measured from a low-resolution raster of the page.
+ *
+ * `measureContentBox` above only sees *text* runs, so scanned / image-only
+ * lecture pages (the common case in this app) always reported "unknown" and
+ * kept their printed white paper margins — which is what shows up as white
+ * strips on the left and right of the phone screen. Rasterising the page once
+ * at ~120px wide is cheap (a few ms) and finds ink regardless of how it was
+ * drawn.
+ */
+export async function measureInkBox(
+  page: AnyPage & { render?: (o: Record<string, unknown>) => { promise: Promise<void> } },
+  sampleWidth = 120,
+): Promise<ContentBox | null> {
+  try {
+    if (typeof document === "undefined" || !page.render) return null;
+    const vp1 = page.getViewport({ scale: 1 });
+    if (!vp1.width || !vp1.height) return null;
+    const scale = Math.min(1, sampleWidth / vp1.width);
+    const vp = page.getViewport({ scale });
+    const w = Math.max(1, Math.round(vp.width));
+    const h = Math.max(1, Math.round(vp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    // Paper white, so an un-painted pixel counts as margin either way.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    const { data } = ctx.getImageData(0, 0, w, h);
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const a = data[i + 3];
+        // Near-white (or transparent) is treated as blank paper.
+        const light = data[i] > 244 && data[i + 1] > 244 && data[i + 2] > 244;
+        if (a < 8 || light) continue;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+    const k = 1 / scale;
+    const x = Math.max(0, minX * k);
+    const y = Math.max(0, minY * k);
+    return {
+      x,
+      y,
+      width: Math.min(vp1.width - x, (maxX - minX + 1) * k),
+      height: Math.min(vp1.height - y, (maxY - minY + 1) * k),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Trim only side margins: keeps full page height, crops left/right whitespace. */
+const MARGIN_MAX_ZOOM = 1.6;
+/** Ignore trims smaller than this fraction of the page width (not worth a reflow). */
+const MARGIN_MIN_TRIM = 0.03;
+
+export function fitToMargins(
+  box: ContentBox | null,
+  page: PageSize,
+  containerWidth: number,
+): ContentFit | null {
+  if (!box || !page.width || !page.height || containerWidth <= 0) return null;
+  if (box.width <= 2 || box.height <= 2) return null;
+
+  const pad = page.width * 0.01;
+  const x = Math.max(0, box.x - pad);
+  const right = Math.min(page.width, box.x + box.width + pad);
+  const w = right - x;
+  if (w <= 0) return null;
+  // Nothing meaningful to trim → render the page exactly as before.
+  if ((page.width - w) / page.width < MARGIN_MIN_TRIM) return null;
+
+  const scale = Math.min(MARGIN_MAX_ZOOM, Math.max(1, containerWidth / w));
+  const renderWidth = Math.round(page.width * scale);
+  const cropWidth = Math.min(containerWidth, Math.round(w * scale));
+  const cropHeight = Math.round(page.height * scale);
+  return {
+    renderWidth,
+    cropWidth,
+    cropHeight,
+    offsetX: Math.round(x * scale),
+    offsetY: 0,
+    blank: false,
+  };
+}

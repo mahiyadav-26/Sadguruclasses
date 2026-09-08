@@ -65,6 +65,10 @@ export default function DocReaderShell({
       // Nested overlays (autoscroll sheet) pop their own sentinel when they
       // close — ignore those so the PDF stays open.
       if (isSyntheticPop()) return;
+      // Belt-and-braces: our own sentinel is still the top entry, so whatever
+      // just popped belonged to a nested overlay (autoscroll sheet "Done").
+      // The timing flag above can expire on slow Android WebViews.
+      if (window.history.state?.pdfFullscreen) return;
       try { onBack(); } catch {}
     };
     window.addEventListener("popstate", onPop);

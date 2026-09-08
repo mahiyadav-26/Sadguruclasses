@@ -11,10 +11,14 @@
  */
 export function computeFitPageWidth(
   viewportWidth: number,
-  containerWidth?: number
+  containerWidth?: number,
+  /** Horizontal breathing room to subtract. Readers that render edge-to-edge
+   *  pass 0; the historical default keeps a 16px gutter. */
+  gutter = 16
 ): number {
   const vp = Math.max(0, Math.floor(viewportWidth || 0));
   const cw = containerWidth && containerWidth > 0 ? Math.floor(containerWidth) : vp;
   const bounded = Math.min(cw, vp);
-  return Math.max(240, Math.min(bounded - 16, 1100));
+  const g = Number.isFinite(gutter) ? Math.max(0, Math.floor(gutter)) : 16;
+  return Math.max(240, Math.min(bounded - g, 1100));
 }
