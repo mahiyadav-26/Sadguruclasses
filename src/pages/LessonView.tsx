@@ -1827,13 +1827,37 @@ const LessonView = () => {
                           2. Edge-swipe-right gesture (useSwipeBack)
                           3. Player's own exit arrow in fullscreen (MahimaGhostPlayer) */}
                     {currentLesson && (['PDF', 'DPP', 'DPP_ATTEMPT', 'NOTES'].includes(currentLesson.lecture_type?.toUpperCase() ?? '')) ? (
-                      <PdfViewer
-                        url={currentLesson.video_url || currentLesson.class_pdf_url || ''}
-                        title={currentLesson.title}
-                        filename={currentLesson.title}
-                        alwaysShowFab
-                        fabBottomOffset={96}
-                      />
+                      <div className="relative w-full bg-background">
+                        {/* Open the class PDF in the full-page immersive reader
+                            (user request 2026-09-08). The inline viewer reserves
+                            room for the lesson chrome below, which left a dead
+                            band on tall phones — full page removes it. */}
+                        <button
+                          type="button"
+                          aria-label="Open PDF full page"
+                          onClick={() => {
+                            const url = currentLesson.video_url || currentLesson.class_pdf_url || '';
+                            if (!url) return;
+                            void selectionHaptic();
+                            setImmersivePdf({
+                              id: currentLesson.id,
+                              url,
+                              title: currentLesson.title || 'Class PDF',
+                              badge: (currentLesson.lecture_type?.toUpperCase() === 'DPP' ? 'DPP' : 'PDF'),
+                            });
+                          }}
+                          className="absolute right-2 top-2 z-[60] inline-flex min-h-11 items-center gap-1.5 rounded-full bg-background/85 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg ring-1 ring-border backdrop-blur transition active:scale-95"
+                        >
+                          <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Full page
+                        </button>
+                        <PdfViewer
+                          url={currentLesson.video_url || currentLesson.class_pdf_url || ''}
+                          title={currentLesson.title}
+                          filename={currentLesson.title}
+                          alwaysShowFab
+                          fabBottomOffset={96}
+                        />
+                      </div>
                     ) : currentLesson && currentLesson.video_url ? (
                         <UnifiedVideoPlayer
                             url={currentLesson.video_url}
