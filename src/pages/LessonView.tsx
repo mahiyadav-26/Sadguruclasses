@@ -17,7 +17,7 @@ import {
   ArrowLeft, Play, Lock, Clock,
   FileText, MessageCircle, CheckCircle, Send, Library, ImageIcon, X,
   HelpCircle, ChevronRight, ChevronDown, ChevronUp, Edit2, Save, Sparkles, ListVideo, Loader2, Target, Paperclip, MessageSquare, Star, ThumbsUp, Download, Bookmark as BookmarkIcon, Users, Phone, Mail, Bot, ExternalLink, Share2,
-  Upload as UploadIcon, Link as LinkIcon, Trash2, BookOpen
+  Upload as UploadIcon, Link as LinkIcon, Trash2, BookOpen, Maximize2
 } from "lucide-react";
 import { Markdown } from "../components/Markdown";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -747,7 +747,16 @@ const LessonView = () => {
     await saveSelectedPdf();
   }, [saveSelectedPdf, selectedPdf]);
 
+  /** Re-open the currently inline PDF as a full-page immersive reader. */
+  const openSelectedPdfFullPage = useCallback(() => {
+    if (!selectedPdf) return;
+    const next = { id: selectedPdf.id, url: selectedPdf.file_url, title: selectedPdf.file_name, badge: "PDF" };
+    closeSelectedPdf();
+    setImmersivePdf(next);
+  }, [closeSelectedPdf, selectedPdf]);
+
   const pdfToolbarActions = selectedPdf ? [
+    { label: "Full page", icon: Maximize2, action: openSelectedPdfFullPage },
     { label: "Export", icon: Share2, action: exportSelectedPdf },
     { label: "Download", icon: Download, action: saveSelectedPdf },
     { label: "Open In Web", icon: ExternalLink, action: () => openExternal(selectedPdf.file_url, { preferWebView: false }) },
@@ -2386,6 +2395,16 @@ const LessonView = () => {
                                   Download / Export / Close now live on the PdfViewer's
                                   own header chrome; autoscroll FAB stays untouched.
                                   User request 2026-07-11. */}
+                              {/* Open this PDF in the full-page immersive reader
+                                  (user request 2026-09-08). */}
+                              <button
+                                type="button"
+                                aria-label="Open PDF full page"
+                                onClick={(e) => { e.stopPropagation(); openSelectedPdfFullPage(); }}
+                                className="absolute right-2 top-2 z-[60] flex items-center gap-1.5 rounded-full bg-background/85 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg ring-1 ring-border backdrop-blur transition active:scale-95"
+                              >
+                                <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Full page
+                              </button>
                               <PdfViewer
                                 url={selectedPdf.file_url}
                                 title={selectedPdf.file_name}

@@ -137,6 +137,9 @@ const DocumentReader = memo(
         // Nested overlay closing itself (autoscroll sheet "Done", notes sheet)
         // fires a synthetic pop — it must not close the reader.
         if (isSyntheticPop()) return;
+        // Our sentinel is still on top → the pop came from a nested overlay
+        // (autoscroll sheet "Done", notes sheet), never a real back press.
+        if (window.history.state?.readerToken === token) return;
         if (readerHistoryPoppedRef.current) return;
         readerHistoryPoppedRef.current = true;
         onBack();

@@ -142,7 +142,7 @@ const isAbortLike = (err: unknown): boolean => {
 
 import { computeFitPageWidth } from "../../lib/pdfFit";
 export { computeFitPageWidth };
-import { measureContentBox, fitToContent, type ContentFit } from "../../lib/pdfContentBox";
+import { measureContentBox, fitToContent, measureInkBox, fitToMargins, type ContentBox, type ContentFit } from "../../lib/pdfContentBox";
 
 import { isSheetsSource, isArchiveSource, pdfSizeProbeRange } from "../../lib/pdfSourceKind";
 
@@ -168,6 +168,7 @@ function LazyPage({
   onVisible,
   onRendered,
   smartFit = false,
+  trimMargins = true,
   releaseWhenDistant = false,
 }: {
   pageNumber: number;
@@ -176,6 +177,8 @@ function LazyPage({
   onVisible: (page: number) => void;
   onRendered: (page: number) => void;
   smartFit?: boolean;
+  /** Crop the page's own printed side margins so it fills the screen width. */
+  trimMargins?: boolean;
   releaseWhenDistant?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -184,25 +187,47 @@ function LazyPage({
   const placeholderHeight = Math.round(width * pageRatio);
   const [fit, setFit] = useState<ContentFit | null>(null);
 
-  // Re-measure when the available width changes (rotation / pinch commit).
-  useEffect(() => { setFit(null); }, [width, smartFit]);
+  // Ink box is a property of the PDF, not of the screen — cache it so a
+  // rotation or pinch re-fits instantly instead of falling back to untrimmed.
+  const inkRef = useRef<{ box: ContentBox; page: { width: number; height: number } } | null>(null);
+
+  // Re-fit (not re-measure) when the available width changes.
+  useEffect(() => {
+    const cached = inkRef.current;
+    if (smartFit || !trimMargins || !cached) { setFit(null); return; }
+    setFit(fitToMargins(cached.box, cached.page, width));
+  }, [width, smartFit, trimMargins]);
 
   const handlePageLoad = useCallback(
     (page: unknown) => {
       const loadedPage = page as { getViewport: (options: { scale: number }) => { width: number; height: number } };
       const viewport = loadedPage.getViewport({ scale: 1 });
       if (viewport.width > 0 && viewport.height > 0) setPageRatio(viewport.height / viewport.width);
-      if (!smartFit) return;
       const p = page as Parameters<typeof measureContentBox>[0];
+      if (smartFit) {
+        void (async () => {
+          const box = await measureContentBox(p);
+          if (!box) return;
+          const vp = p.getViewport({ scale: 1 });
+          const next = fitToContent(box, { width: vp.width, height: vp.height }, width);
+          if (next) setFit(next);
+        })();
+        return;
+      }
+      if (!trimMargins) return;
+      // Scanned lecture pages carry their own white paper margins. Measure the
+      // ink once and crop the sides so the page fills the phone screen.
       void (async () => {
-        const box = await measureContentBox(p);
-        if (!box) return;
         const vp = p.getViewport({ scale: 1 });
-        const next = fitToContent(box, { width: vp.width, height: vp.height }, width);
+        const cached = inkRef.current;
+        const box = cached?.box ?? (await measureInkBox(p as Parameters<typeof measureInkBox>[0]));
+        if (!box) return;
+        inkRef.current = { box, page: { width: vp.width, height: vp.height } };
+        const next = fitToMargins(box, { width: vp.width, height: vp.height }, width);
         if (next) setFit(next);
       })();
     },
-    [smartFit, width]
+    [smartFit, trimMargins, width]
   );
 
   useEffect(() => {
@@ -334,7 +359,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     // (avoids the brief 800px overshoot that clipped the page on mobile).
     const [pageWidth, setPageWidth] = useState<number>(() => {
       if (typeof window === "undefined") return 800;
-      return computeFitPageWidth(window.visualViewport?.width ?? window.innerWidth);
+      return computeFitPageWidth(window.visualViewport?.width ?? window.innerWidth, undefined, 0);
     });
 
     const { readerZoom: showZoomControls } = usePlayerReaderControls();
@@ -438,7 +463,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       if (!el) return;
       const update = () => {
         const visualWidth = window.visualViewport?.width ?? window.innerWidth;
-        setPageWidth(computeFitPageWidth(visualWidth, el.clientWidth));
+        setPageWidth(computeFitPageWidth(visualWidth, el.clientWidth, 0));
       };
       update();
       const ro = new ResizeObserver(update);
@@ -1015,7 +1040,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       <div
         ref={scrollRef}
         data-archive-virtualized={isArchiveSource(src) ? "true" : undefined}
-        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-white [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-neutral-950 [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
         onClick={onSurfaceTap}
         style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x pan-y pinch-zoom" }}
       >
@@ -1102,6 +1127,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
                     onVisible={handleVisible}
                     onRendered={handleRendered}
                     smartFit={isSheetsSource(url)}
+                    trimMargins={!isSheetsSource(url)}
                     releaseWhenDistant={isArchiveSource(src)}
                   />
                 ))}
