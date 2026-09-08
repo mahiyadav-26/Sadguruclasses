@@ -161,9 +161,18 @@ const Community = () => {
   const hydrateAuxData = async (postsData: Post[]) => {
     const ids = postsData.map((p) => p.id);
     if (ids.length === 0) return;
+    // AUDIT 2026-09-08 (SEC): reading community_reactions directly let any
+    // signed-in user enumerate who liked what. Counts now come from the
+    // get_post_reactions RPC, which returns only totals + "did I like it".
     const [{ data: cmts }, { data: reacts }] = await Promise.all([
       supabase.from("community_comments").select("*").in("post_id", ids).order("created_at"),
-      supabase.from("community_reactions").select("post_id,user_id").in("post_id", ids),
+      (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: { post_id: string; like_count: number; liked_by_me: boolean }[] | null }>)(
+        "get_post_reactions",
+        { _post_ids: ids },
+      ),
     ]);
     setComments((prev) => {
       const grouped = { ...prev };
@@ -176,9 +185,10 @@ const Community = () => {
       const likeMap = { ...prev };
       ids.forEach((id) => { likeMap[id] ||= { count: 0, liked: false }; });
       (reacts ?? []).forEach((r) => {
-        const slot = (likeMap[r.post_id] ||= { count: 0, liked: false });
-        slot.count += 1;
-        if (user && r.user_id === user.id) slot.liked = true;
+        likeMap[r.post_id] = {
+          count: Number(r.like_count ?? 0),
+          liked: Boolean(r.liked_by_me),
+        };
       });
       return likeMap;
     });
@@ -470,44 +480,4 @@ const Community = () => {
                             onChange={e => setCommentDraft(d => ({ ...d, [post.id]: e.target.value }))}
                             onKeyDown={e => e.key === "Enter" && handleAddComment(post.id)}
                           />
-                          <Button aria-label="Post comment" size="icon" onClick={() => handleAddComment(post.id)}>
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {hasMore && (
-              <div className="pt-2 pb-4 flex justify-center">
-                <Button
-                  variant="outline"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="min-w-[10rem]"
-                >
-                  {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-
-      {/* Fullscreen in-app Notion preview overlay.
-          NotionPageRenderer ships its own minimal top-left exit arrow that
-          calls history.back() → triggers the popstate listener above and
-          closes this overlay (returns the user to the Community feed). */}
-      {notionPreview && (
-        <div className="fixed inset-0 z-[100] bg-background safe-area-top">
-          <NotionPageRenderer url={notionPreview.url} title={notionPreview.title} />
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Community;
+                          <Button aria-label="Post comment"
