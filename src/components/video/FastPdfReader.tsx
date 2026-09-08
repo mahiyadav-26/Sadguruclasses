@@ -943,6 +943,19 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       [onPageChange, initialPage]
     );
 
+    // Connection came back after an offline failure → retry automatically so the
+    // student does not have to find the Retry link.
+    useEffect(() => {
+      if (!error) return;
+      const onOnline = () => {
+        setError(null);
+        triedByteFallback.current = false;
+        setRetryNonce((n) => n + 1);
+      };
+      window.addEventListener("online", onOnline);
+      return () => window.removeEventListener("online", onOnline);
+    }, [error]);
+
     if (resolving || (fallbackLoading && !file)) {
       return (
         <div className="absolute inset-0 bg-background">
@@ -1040,7 +1053,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       <div
         ref={scrollRef}
         data-archive-virtualized={isArchiveSource(src) ? "true" : undefined}
-        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-neutral-950 [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-neutral-100 [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
         onClick={onSurfaceTap}
         style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x pan-y pinch-zoom" }}
       >

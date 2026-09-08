@@ -86,5 +86,12 @@ export function friendlyPdfErrorMessage(err: unknown, src: string | null | undef
     return "The file download was cut short. Tap Retry to fetch a fresh copy.";
   }
 
+  if (/failed to fetch|network error|network request failed|load failed|net::ERR|connection (reset|closed|abort)|ECONNRESET|ETIMEDOUT|timeout/i.test(msg)) {
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    return offline
+      ? "You're offline — turn on mobile data or Wi-Fi (airplane mode off) and tap Retry."
+      : "Network connection dropped while downloading. Tap Retry.";
+  }
+
   return msg || "Failed to load PDF.";
 }
