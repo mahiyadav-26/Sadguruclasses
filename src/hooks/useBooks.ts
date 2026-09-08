@@ -96,7 +96,7 @@ export function useBooks() {
         });
 
       if (dbError) throw dbError;
-      toast({ title: 'Book added successfully!' });
+      toast({ title: 'Book added' });
       await fetchBooks();
     } catch (err: any) {
       logger.error('Error adding book:', err);
@@ -138,7 +138,7 @@ export function useBooks() {
         .eq('id', id);
 
       if (dbError) throw dbError;
-      toast({ title: 'Book updated successfully!' });
+      toast({ title: 'Book updated' });
       await fetchBooks();
     } catch (err: any) {
       logger.error('Error updating book:', err);
@@ -157,7 +157,7 @@ export function useBooks() {
         .eq('id', id);
 
       if (dbError) throw dbError;
-      toast({ title: 'Book deleted successfully!' });
+      toast({ title: 'Book deleted' });
       await fetchBooks();
     } catch (err: any) {
       logger.error('Error deleting book:', err);
