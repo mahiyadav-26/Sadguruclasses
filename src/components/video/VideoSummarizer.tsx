@@ -138,7 +138,7 @@ const VideoSummarizer = ({ videoUrl, lessonTitle, lessonId, lessonDescription, l
       >
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Brain className="h-4 w-4 text-primary" />
           </div>
           <div className="text-left">
             <p className="text-sm font-bold text-foreground">Sadguru Coaching Classes Agent</p>

@@ -66,7 +66,7 @@ export const useCreateBanner = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["hero_banners"] });
-      toast.success("Banner added successfully!");
+      toast.success("Banner added");
     },
     onError: (e: any) => toast.error("Failed to add banner: " + e.message),
   });

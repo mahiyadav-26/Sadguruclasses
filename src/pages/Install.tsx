@@ -183,7 +183,7 @@ const Install = () => {
     const onAppInstalled = () => {
       setInstalled(true);
       setPromptUsed(false);
-      toast.success("App installed successfully! 🎉");
+      toast.success("App installed");
     };
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", onAppInstalled);
