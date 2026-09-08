@@ -30,7 +30,7 @@ import {
   Trash2, Plus, BookOpen, ExternalLink, ShieldAlert, Search,
   Download, Filter, RefreshCw, Eye, IndianRupee, Loader2, Library, Calendar,
   GraduationCap, UserCheck, UserX, Radio, ImageIcon, MessageSquare, Monitor, MonitorPlay, Smartphone, LogOut,
-  FileText, Link as LinkIcon,
+  FileText, Link as LinkIcon, LayoutDashboard,
 } from "lucide-react";
 
 import ContentDrillDown from "../components/admin/ContentDrillDown";
@@ -64,7 +64,7 @@ const Admin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, isAdmin, isLoading: authLoading } = useAuth();
-  const activeTab = searchParams.get("tab") || "courses";
+  const activeTab = searchParams.get("tab") || "overview";
   const setActiveTab = (tab: string) => setSearchParams({ tab }, { replace: true });
 
   // Auto-center the active tab inside the horizontally scrolling TabsList so
@@ -548,6 +548,17 @@ const Admin = () => {
     { label: "Active Sessions", value: statsData.activeSessions, icon: Monitor, color: "text-cyan-600 bg-cyan-100", tab: "sessions" },
   ];
 
+  const quickActions = [
+    { label: "Batch Details", description: "View & manage batch rosters", icon: Users, tab: "batches", route: "/admin/batch-monitor" },
+    { label: "Upload Content", description: "Add lectures, PDFs & videos", icon: Upload, tab: "content" },
+    { label: "Live Classes", description: "Schedule & go live", icon: Radio, tab: "live", route: "/admin/live" },
+    { label: "Payments", description: "Approve, reject & refund", icon: IndianRupee, tab: "payments" },
+    { label: "Courses", description: "Create & edit courses", icon: BookOpen, tab: "courses" },
+    { label: "Users", description: "Students, teachers & roles", icon: Users, tab: "users" },
+    { label: "Enrollments", description: "Manual access & approvals", icon: UserCheck, tab: "enrollments" },
+    { label: "Sessions", description: "Active devices & logout", icon: Monitor, tab: "sessions" },
+  ];
+
   const getRoleBadge = (role: string | null) => {
     switch (role) {
       case 'admin': return <Badge className="bg-red-100 text-red-700 border-red-200">Admin</Badge>;
@@ -620,24 +631,6 @@ const Admin = () => {
           </Button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
-          {stats.map((stat) => (
-            <Card key={stat.label} className={`border-none shadow-sm ${stat.tab ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
-              onClick={() => { if (stat.tab) setActiveTab(stat.tab); }}>
-              <CardContent className="p-2 md:p-4 flex items-center gap-1.5 md:gap-4 min-w-0">
-                <div className={`p-1.5 md:p-3 rounded-md md:rounded-xl shrink-0 ${stat.color}`}>
-                  <stat.icon className="h-3.5 w-3.5 md:h-6 md:w-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-base md:text-2xl font-bold text-foreground leading-tight">{stat.value}</p>
-                  <p className="text-[10px] md:text-sm text-muted-foreground font-medium truncate">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         {/* TABS */}
         {/*
           PERF — Heavy <TabsContent> bodies (payments / users / teachers /
@@ -671,6 +664,7 @@ const Admin = () => {
               data-admin-tabs=""
             >
 
+            <TabsTrigger data-tab="overview" value="overview" className="py-2 min-h-[44px] shrink-0 gap-1"><LayoutDashboard className="h-4 w-4" />Overview</TabsTrigger>
             <TabsTrigger data-tab="courses" value="courses" className="py-2 min-h-[44px] shrink-0 gap-1"><BookOpen className="h-4 w-4" />Courses</TabsTrigger>
             <TabsTrigger data-tab="live" value="live" className="py-2 min-h-[44px] shrink-0 gap-1 text-destructive data-[state=active]:text-destructive"><Radio className="h-4 w-4" />Live</TabsTrigger>
             <TabsTrigger data-tab="payments" value="payments" className="py-2 min-h-[44px] shrink-0 gap-1">Payments <Badge variant="destructive" className="ml-1">{statsData.pendingPayments}</Badge></TabsTrigger>
@@ -695,6 +689,54 @@ const Admin = () => {
 
 
 
+
+          {/* OVERVIEW TAB */}
+          <TabsContent value="overview">{activeTab === 'overview' && (<>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6">
+              {stats.map((stat) => (
+                <Card key={stat.label} className={`border-none shadow-sm ${stat.tab ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+                  onClick={() => { if (stat.tab) setActiveTab(stat.tab); }}>
+                  <CardContent className="p-2 md:p-4 flex items-center gap-1.5 md:gap-4 min-w-0">
+                    <div className={`p-1.5 md:p-3 rounded-md md:rounded-xl shrink-0 ${stat.color}`}>
+                      <stat.icon className="h-3.5 w-3.5 md:h-6 md:w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-base md:text-2xl font-bold text-foreground leading-tight">{stat.value}</p>
+                      <p className="text-[10px] md:text-sm text-muted-foreground font-medium truncate">{stat.label}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Quick Actions Grid */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Actions</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {quickActions.map((action) => (
+                  <Card
+                    key={action.label}
+                    className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+                    onClick={() => {
+                      if (action.route) navigate(action.route);
+                      else if (action.tab) setActiveTab(action.tab);
+                    }}
+                  >
+                    <CardContent className="p-4 flex flex-col items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <action.icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{action.label}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </>)}</TabsContent>
 
           {/* PAYMENTS TAB */}
           <TabsContent value="payments">{activeTab === 'payments' && (<>
