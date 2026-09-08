@@ -39,11 +39,21 @@ export const BatchProvider = ({ children }: { children: ReactNode }) => {
     const fetchBatches = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        const query = () => supabase
           .from("enrollments")
           .select("course_id, courses ( id, title, grade, image_url )")
           .eq("user_id", String(user.id))
           .eq("status", "active");
+
+        let { data, error } = await query();
+        // A stale access token makes PostgREST evaluate the request as `anon`
+        // → 42501 "permission denied for table enrollments" / PGRST303 "JWT
+        // expired". Refresh the session once and retry before giving up; this
+        // is an expected lifecycle event, not an application error.
+        if (error && /42501|PGRST30[13]|jwt expired|permission denied/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed?.session) ({ data, error } = await query());
+        }
 
         if (error) throw error;
 
@@ -84,7 +94,14 @@ export const BatchProvider = ({ children }: { children: ReactNode }) => {
           setSelectedBatchState(enrolledBatches[0]);
         }
       } catch (err) {
-        logger.error("Error fetching batches", err);
+        const e = err as { code?: string; message?: string };
+        if (/42501|PGRST30[13]|jwt expired|permission denied/i.test(`${e?.code ?? ""} ${e?.message ?? ""}`)) {
+          // Session is genuinely gone (refresh failed) — AuthContext will sign
+          // the user out; don't double-report as an app error.
+          logger.warn("Batches skipped: session expired", { code: e?.code });
+        } else {
+          logger.error("Error fetching batches", err);
+        }
       } finally {
         setLoading(false);
       }

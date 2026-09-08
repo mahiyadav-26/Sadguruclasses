@@ -188,7 +188,7 @@ export function isTransientNetworkNoise(reason: unknown): boolean {
     const msg = typeof reason === "string"
       ? reason
       : String((reason as { message?: string }).message ?? "");
-    if (!/failed to fetch|network error|networkerror|load failed|err_internet_disconnected|err_network_changed|the internet connection appears to be offline/i.test(msg)) {
+    if (!/failed to fetch|network error|networkerror|network request failed|load failed|unexpected end of stream|connection (abort|reset|closed|refused)|software caused connection|ECONNRESET|ETIMEDOUT|err_internet_disconnected|err_network_changed|err_connection_|err_name_not_resolved|the internet connection appears to be offline|the network connection was lost|loading chunk|dynamically imported module|chunkloaderror/i.test(msg)) {
       return false;
     }
     // A rejection with real app frames is a bug we want to see; the noisy

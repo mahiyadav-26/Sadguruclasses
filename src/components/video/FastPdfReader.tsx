@@ -145,6 +145,12 @@ export { computeFitPageWidth };
 import { measureContentBox, fitToContent, type ContentFit } from "../../lib/pdfContentBox";
 
 import { isSheetsSource, isArchiveSource, pdfSizeProbeRange } from "../../lib/pdfSourceKind";
+
+function abortErrorForReader(): Error {
+  const e = new Error("Aborted");
+  e.name = "AbortError";
+  return e;
+}
 export { isSheetsSource, isArchiveSource };
 
 
@@ -551,7 +557,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
 
 
     const fetchPdfBlobWithRetry = useCallback(async (source: string, signal: AbortSignal): Promise<Blob> => {
-      const maxAttempts = /pdf-proxy\?kind=drive|[?&]kind=drive/i.test(source) ? 3 : 2;
+      const maxAttempts = /pdf-proxy\?kind=drive|[?&]kind=drive/i.test(source) ? 4 : 3;
       let lastErr: Error | null = null;
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
@@ -567,8 +573,24 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
           const authHeaders = session?.access_token
             ? { Authorization: `Bearer ${session.access_token}` }
             : undefined;
-          const nativeBlob = await requestPdfViaNativeHttp(attemptUrl, { signal, headers: authHeaders });
-          if (nativeBlob) return nativeBlob;
+          // Native OkHttp path first (sidesteps WebView CORS/`https://localhost`
+          // origin issues). It can die mid-body on flaky mobile networks
+          // ("unexpected end of stream", "connection reset") — treat that as a
+          // soft failure and fall through to the browser fetch on the same
+          // attempt instead of surfacing it as a reader error.
+          try {
+            const nativeBlob = await requestPdfViaNativeHttp(attemptUrl, { signal, headers: authHeaders });
+            if (nativeBlob && nativeBlob.size > 0) return nativeBlob;
+          } catch (nativeErr) {
+            if (isAbortLike(nativeErr)) throw nativeErr;
+            const nStatus = (nativeErr as { status?: number })?.status ?? 0;
+            // Definitive server answers (403/404/415) are not worth a second
+            // request through the WebView — bubble up for the friendly message.
+            if (nStatus === 403 || nStatus === 404 || nStatus === 415) throw nativeErr;
+            const nativeMsg = nativeErr instanceof Error ? nativeErr.message : String(nativeErr);
+            traceReader(route, "retrying", "byte-fallback-native-soft-fail", { attempt, message: nativeMsg.slice(0, 120) });
+          }
+          if (signal.aborted) throw abortErrorForReader();
           const res = await fetch(attemptUrl, {
             credentials: "omit",
             cache: "reload",
@@ -592,10 +614,11 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
           if (isAbortLike(err)) throw err;
           lastErr = err instanceof Error ? err : new Error(String(err));
           const status = (lastErr as Error & { status?: number }).status ?? Number(msg.match(/HTTP\s+(\d{3})/i)?.[1] || 0);
-          const retryable = status === 503 || status === 502 || status === 504 || status === 429;
+          const transient = /unexpected end of stream|failed to fetch|network error|network request failed|connection (abort|reset|closed)|ECONNRESET|ETIMEDOUT|timeout|load failed|exceeds response body|content-length header/i.test(msg);
+          const retryable = transient || status === 503 || status === 502 || status === 504 || status === 429 || status === 408;
           if (!retryable || attempt === maxAttempts) break;
           traceReader(route, "retrying", "byte-fallback-503-retry", { attempt, status });
-          await new Promise((resolve) => window.setTimeout(resolve, 350 * attempt));
+          await new Promise((resolve) => window.setTimeout(resolve, (transient ? 600 : 350) * attempt));
         }
       }
       throw lastErr ?? new Error("Failed to fetch PDF bytes");

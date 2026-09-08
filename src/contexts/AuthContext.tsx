@@ -98,14 +98,28 @@ async function fetchUserData(
     // Now: on RPC error, report to Sentry AND fall back to defaults (which
     // set role="student" for the same reason) but surface the error path
     // so triage can see it in logs.
-    const roleErr = (roleResult as { error?: unknown }).error;
+    let roleErr = (roleResult as { error?: unknown }).error;
+    let roleData = roleResult.data;
+    // Expired JWT (PGRST303) is a session lifecycle event, not an RPC bug:
+    // refresh once and retry so admins/teachers don't get downgraded to the
+    // student UI after a long background.
+    if (roleErr && /PGRST30[13]|jwt expired|42501/i.test(JSON.stringify(roleErr))) {
+      try {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (refreshed?.session) {
+          const retry = await supabase.rpc("get_user_role", { _user_id: supabaseUser.id });
+          roleErr = retry.error ?? undefined;
+          roleData = retry.data;
+        }
+      } catch { /* fall through to defaults */ }
+    }
     if (roleErr) {
       try {
         const { reportError } = await import("@/lib/sentry");
         reportError(roleErr, { where: "AuthContext.fetchUserData", op: "get_user_role" });
       } catch { /* noop */ }
     }
-    const role: AppRole = (roleResult.data as AppRole) ?? "student";
+    const role: AppRole = (roleData as AppRole) ?? "student";
     // Persist so the next cold-start seeds the correct role synchronously.
     writeCachedRole(supabaseUser.id, role);
     const fullName = profileData?.full_name ?? supabaseUser.user_metadata?.full_name ?? null;
