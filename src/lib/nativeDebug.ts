@@ -169,6 +169,39 @@ export function isRoutineAbortNoise(args: unknown[]): boolean {
   return false;
 }
 
+/**
+ * Transient connectivity failures. On mobile (Android WebView) a backgrounded
+ * tab, a dropped 3G packet, or a Supabase/edge fetch racing app-suspend all
+ * reject with a bare `TypeError: Failed to fetch` / `TypeError: network error`
+ * that carries no app stack frame. Those are reliability signal, not crashes:
+ * forwarding them through `logger.error` created the Sentry issues
+ * SADGURU-COACHING-MOBILE-{P,Q,R,T,V} (dozens of events, 0 users impacted,
+ * "No stacktrace available"). We keep them in the console/overlay as warnings
+ * so local debugging is unaffected, but stop reporting them as errors.
+ */
+export function isTransientNetworkNoise(reason: unknown): boolean {
+  try {
+    if (reason == null) return false;
+    const name = String((reason as { name?: string }).name ?? "");
+    // Only ever suppress plain fetch/network TypeErrors.
+    if (name && name !== "TypeError" && name !== "NetworkError") return false;
+    const msg = typeof reason === "string"
+      ? reason
+      : String((reason as { message?: string }).message ?? "");
+    if (!/failed to fetch|network error|networkerror|load failed|err_internet_disconnected|err_network_changed|the internet connection appears to be offline/i.test(msg)) {
+      return false;
+    }
+    // A rejection with real app frames is a bug we want to see; the noisy
+    // variant has no stack at all (or only vendor/browser frames).
+    const stack = String((reason as { stack?: string }).stack ?? "");
+    if (stack && /\/src\/|\/assets\/index-|\.tsx/i.test(stack)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
 export function isExpectedConsoleNoise(args: unknown[]): boolean {
   return isExpectedCapacitorNoise(args) || isRoutineAbortNoise(args);
 }
@@ -247,6 +280,15 @@ export function initNativeDebug(): void {
     }
     const reason = e.reason as { name?: string; message?: string; stack?: string } | null;
     const msg = reason?.message ?? String(e.reason ?? "");
+    // Connectivity blips: keep them visible locally, stop paging Sentry.
+    if (isTransientNetworkNoise(e.reason)) {
+      try { e.preventDefault(); e.stopImmediatePropagation(); } catch { /* noop */ }
+      logger.warn("[network] request failed (offline or transient)", {
+        message: msg,
+        online: typeof navigator !== "undefined" ? navigator.onLine : null,
+      });
+      return;
+    }
     logger.error("[unhandledrejection]", reason?.stack || msg || e.reason);
   }, true);
 

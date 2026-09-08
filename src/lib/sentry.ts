@@ -124,6 +124,11 @@ export async function initSentry(): Promise<void> {
       // Bearer headers from every event payload before send. Layered on
       // top of Sentry's built-in sendDefaultPii=false.
       beforeSend: (event) => {
+        // 0) Drop stackless connectivity failures. Sentry's own global
+        //    handlers also see `TypeError: Failed to fetch` even when
+        //    nativeDebug suppressed the console path; those events have no
+        //    frames, no user impact, and only bury real regressions.
+        if (isStacklessNetworkEvent(event as unknown as Record<string, unknown>)) return null;
         // 1) Strip eruda / vendor-sentry frames from stack fingerprints so
         //    admin devtool wrappers don't dominate the grouping.
         stripNoisyFrames(event as unknown as Record<string, unknown>);
@@ -238,6 +243,24 @@ function isDuplicateWithinWindow(event: Record<string, unknown>): boolean {
 
 // Strip Eruda devtool frames and Sentry-vendor internals so the fingerprint
 // picks the actual app frame (fileUtils, useLocalPdfSource, etc).
+// Stackless connectivity noise — matches the nativeDebug filter but at the
+// transport layer, so events raised by Sentry's own global handlers (which
+// bypass console.error) are dropped too. Anything with real app frames is
+// kept: those are genuine bugs that happen to fail a fetch.
+const NETWORK_NOISE_RE = /failed to fetch|network error|networkerror|load failed|err_internet_disconnected|err_network_changed|internet connection appears to be offline/i;
+function isStacklessNetworkEvent(event: Record<string, unknown>): boolean {
+  try {
+    const ex = (event as { exception?: { values?: Array<{ type?: string; value?: string; stacktrace?: { frames?: Array<{ filename?: string }> } }> } }).exception;
+    const first = ex?.values?.[0];
+    if (!first) return false;
+    const msg = `${first.type ?? ""}: ${first.value ?? ""}`;
+    if (!NETWORK_NOISE_RE.test(msg)) return false;
+    const frames = first.stacktrace?.frames ?? [];
+    const hasAppFrame = frames.some((f) => /\/src\/|\.tsx|assets\/index-/i.test(f.filename ?? ""));
+    return !hasAppFrame;
+  } catch { return false; }
+}
+
 const NOISY_FRAME_RE = /(eruda-[^/]+\.js|vendor-sentry-[^/]+\.js)/i;
 function stripNoisyFrames(event: Record<string, unknown>): void {
   try {
