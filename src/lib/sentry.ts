@@ -128,7 +128,7 @@ export async function initSentry(): Promise<void> {
         //    handlers also see `TypeError: Failed to fetch` even when
         //    nativeDebug suppressed the console path; those events have no
         //    frames, no user impact, and only bury real regressions.
-        if (isStacklessNetworkEvent(event as unknown as Record<string, unknown>)) return null;
+        if (isNoiseEvent(event as unknown as Record<string, unknown>)) return null;
         // 1) Strip eruda / vendor-sentry frames from stack fingerprints so
         //    admin devtool wrappers don't dominate the grouping.
         stripNoisyFrames(event as unknown as Record<string, unknown>);
@@ -247,17 +247,39 @@ function isDuplicateWithinWindow(event: Record<string, unknown>): boolean {
 // transport layer, so events raised by Sentry's own global handlers (which
 // bypass console.error) are dropped too. Anything with real app frames is
 // kept: those are genuine bugs that happen to fail a fetch.
-const NETWORK_NOISE_RE = /failed to fetch|network error|networkerror|load failed|err_internet_disconnected|err_network_changed|internet connection appears to be offline/i;
-function isStacklessNetworkEvent(event: Record<string, unknown>): boolean {
+export const NETWORK_NOISE_RE = /failed to fetch|network error|networkerror|network request failed|load failed|unexpected end of stream|connection (abort|reset|closed|refused)|software caused connection|socket(exception| closed| hang up)|ECONNRESET|ECONNABORTED|ETIMEDOUT|EPIPE|err_internet_disconnected|err_network_changed|err_connection_(reset|closed|refused|aborted|timed_out)|err_name_not_resolved|internet connection appears to be offline|the network connection was lost|unknownerrorexception: network|timeout(exception)?$/i;
+
+// Handled-by-design failures: the app already recovers from these itself
+// (crashShield reloads on stale chunks, AuthContext refreshes an expired JWT,
+// PDF reader falls back to another source). They are reliability *signal*,
+// never a crash, so they live in breadcrumbs — not as Sentry issues.
+export const HANDLED_NOISE_RE = /loading chunk|failed to fetch dynamically imported module|chunkloaderror|importing a module script failed|jwt expired|pgrst303|pgrst301|permission denied for table|"code":"42501"|code":"PGRST30[13]"|invalid refresh token|refresh_token_not_found|auth session missing|resizeobserver loop/i;
+
+export function isNoiseMessage(msg: string): boolean {
+  return NETWORK_NOISE_RE.test(msg) || HANDLED_NOISE_RE.test(msg);
+}
+
+function eventMessage(event: Record<string, unknown>): string {
+  const ex = (event as { exception?: { values?: Array<{ type?: string; value?: string }> } }).exception;
+  const parts: string[] = [];
+  for (const v of ex?.values ?? []) parts.push(`${v.type ?? ""}: ${v.value ?? ""}`);
+  const m = (event as { message?: unknown }).message;
+  if (typeof m === "string") parts.push(m);
+  else if (m && typeof m === "object") parts.push(String((m as { formatted?: string }).formatted ?? ""));
+  return parts.join(" | ");
+}
+
+/**
+ * Drop connectivity + handled-recovery noise at the transport layer, no
+ * matter which handler raised it (console forwarder, unhandledrejection trap,
+ * Sentry's own global instrumentation) and regardless of stack frames — the
+ * wrapper frame from logger.ts used to make these look like "app" errors.
+ */
+function isNoiseEvent(event: Record<string, unknown>): boolean {
   try {
-    const ex = (event as { exception?: { values?: Array<{ type?: string; value?: string; stacktrace?: { frames?: Array<{ filename?: string }> } }> } }).exception;
-    const first = ex?.values?.[0];
-    if (!first) return false;
-    const msg = `${first.type ?? ""}: ${first.value ?? ""}`;
-    if (!NETWORK_NOISE_RE.test(msg)) return false;
-    const frames = first.stacktrace?.frames ?? [];
-    const hasAppFrame = frames.some((f) => /\/src\/|\.tsx|assets\/index-/i.test(f.filename ?? ""));
-    return !hasAppFrame;
+    const msg = eventMessage(event);
+    if (!msg.trim()) return false;
+    return isNoiseMessage(msg);
   } catch { return false; }
 }
 
@@ -305,17 +327,19 @@ function safeStringify(v: unknown): string {
  * unhandled-rejection trap, Sentry's own handler). Tagging by *cause* lets
  * triage filter `nb_kind:network` and close a whole class at once.
  */
-export type ErrorKind = "network" | "pdf-source" | "proxy" | "native" | "app";
+export type ErrorKind = "network" | "handled" | "pdf-source" | "proxy" | "native" | "app";
 
 const KIND_RULES: Array<[ErrorKind, RegExp]> = [
-  ["network", /network error|failed to fetch|load failed|networkerror|err_internet_disconnected|timeout|aborted/i],
+  ["network", NETWORK_NOISE_RE],
+  ["handled", HANDLED_NOISE_RE],
+  ["network", /timeout|aborted/i],
   ["proxy", /storage proxy unavailable|pdf-proxy|responseexception|unexpected server response \(5\d\d\)/i],
   ["pdf-source", /invalidpdf|unknownerrorexception|missingpdf|password.*pdf|invalid pdf structure|datacloneerror/i],
   ["native", /capacitor|unimplemented|downloadfile|filesystem|not implemented on (android|ios|web)/i],
 ];
 
 export function classifyError(err: unknown): ErrorKind {
-  const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err ?? "");
+  const msg = describeError(err);
   for (const [kind, re] of KIND_RULES) if (re.test(msg)) return kind;
   return "app";
 }
@@ -333,9 +357,25 @@ export function reportError(err: unknown, context?: Record<string, unknown>): vo
   captureException(err, context);
 }
 
+function describeError(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  if (err && typeof err === "object") {
+    const o = err as { code?: unknown; message?: unknown };
+    if (o.message || o.code) return `${o.code ?? ""} ${o.message ?? ""}`.trim();
+    try { return JSON.stringify(err); } catch { return String(err); }
+  }
+  return String(err ?? "");
+}
+
 export function captureException(err: unknown, context?: Record<string, unknown>) {
   if (!shouldLoad()) return;
   const kind = classifyError(err);
+  // Connectivity blips and self-healing failures never become issues: keep
+  // them as breadcrumbs so the trail is visible on the *next* real error.
+  if (kind === "network" || kind === "handled") {
+    addBreadcrumb(kind, describeError(err).slice(0, 200), context);
+    return;
+  }
   loadSentry().then((mod) => {
     if (!mod || !initialized) return;
     try {
