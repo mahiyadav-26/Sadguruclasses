@@ -129,7 +129,7 @@ const Attendance = () => {
       const { error } = await supabase.from("attendance").insert(records);
       if (error) throw error;
 
-      toast.success("Attendance submitted successfully!");
+      toast.success("Attendance submitted");
       navigate("/dashboard");
     } catch (error: any) {
       logger.error("Attendance submission error", error);
