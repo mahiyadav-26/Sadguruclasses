@@ -480,4 +480,44 @@ const Community = () => {
                             onChange={e => setCommentDraft(d => ({ ...d, [post.id]: e.target.value }))}
                             onKeyDown={e => e.key === "Enter" && handleAddComment(post.id)}
                           />
-                          <Button aria-label="Post comment"
+                          <Button aria-label="Post comment" size="icon" onClick={() => handleAddComment(post.id)}>
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {hasMore && (
+              <div className="pt-2 pb-4 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="min-w-[10rem]"
+                >
+                  {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+
+      {/* Fullscreen in-app Notion preview overlay.
+          NotionPageRenderer ships its own minimal top-left exit arrow that
+          calls history.back() → triggers the popstate listener above and
+          closes this overlay (returns the user to the Community feed). */}
+      {notionPreview && (
+        <div className="fixed inset-0 z-[100] bg-background safe-area-top">
+          <NotionPageRenderer url={notionPreview.url} title={notionPreview.title} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Community;
