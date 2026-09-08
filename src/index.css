@@ -239,6 +239,18 @@ body[data-lovable-dialog-open="true"] [data-floating-fab="true"] {
   body.nb-scroll-lock.nb-allow-landscape-scroll {
     overflow-y: auto !important;
     touch-action: pan-y !important;
+    /* A reader (PDF / Smart Notes) is open — the black player backdrop would
+       show through below the light reader surface as a dead band on tall
+       phones (reported 2026-09-08). Keep the paper background instead. */
+    background: hsl(var(--background)) !important;
+  }
+  /* The lesson page must always paint the full visual viewport. `dvh` alone can
+     resolve shorter than the painted area in the Android WebView, which let the
+     body backdrop show through under the PDF reader. */
+  [data-lesson-root] {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: hsl(var(--background));
   }
 
   h1, h2, h3, h4, h5, h6 {
