@@ -1,7 +1,12 @@
 import { memo } from "react";
 import { Play, Send } from "lucide-react";
+import Picture from "../ui/Picture";
 import mentorUrl from "../../assets/landing/mentor-portrait.jpg";
+import mentorWebp from "../../assets/landing/mentor-portrait.webp";
+import mentorAvif from "../../assets/landing/mentor-portrait.avif";
 import studentGirlUrl from "../../assets/landing/student-portrait.jpg";
+import studentGirlWebp from "../../assets/landing/student-portrait.webp";
+import studentGirlAvif from "../../assets/landing/student-portrait.avif";
 import { selectionHaptic } from "@/lib/native/haptics";
 
 /**
@@ -37,13 +42,16 @@ const HeroIllustration = memo(() => (
           className="absolute inset-0 rounded-full overflow-hidden ring-1 ring-primary/25 bg-primary/5
                      shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.35)]"
         >
-          <img
-            src={studentGirlUrl}
+          <Picture
+            srcAvif={studentGirlAvif}
+            srcWebp={studentGirlWebp}
+            srcFallback={studentGirlUrl}
             alt="Sadguru Coaching Classes student practising spoken English"
+            width={768}
+            height={768}
+            priority
+            pictureClassName="block h-full w-full"
             className="h-full w-full object-cover object-top"
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
           />
         </div>
 
@@ -96,12 +104,15 @@ const HeroIllustration = memo(() => (
           className="absolute inset-0 rounded-full overflow-hidden ring-2 ring-primary/40 bg-primary/5
                      shadow-[0_16px_48px_-16px_hsl(var(--primary)/0.4)]"
         >
-          <img
-            src={mentorUrl}
+          <Picture
+            srcAvif={mentorAvif}
+            srcWebp={mentorWebp}
+            srcFallback={mentorUrl}
             alt="Ramchandra Sir — founding faculty, Sadguru Coaching Classes"
+            width={768}
+            height={768}
+            pictureClassName="block h-full w-full"
             className="h-full w-full object-cover object-top"
-            loading="lazy"
-            decoding="async"
           />
         </div>
 

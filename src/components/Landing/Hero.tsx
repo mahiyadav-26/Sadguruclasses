@@ -3,7 +3,10 @@ import { Button } from "../ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tapHaptic } from "@/lib/native/haptics";
+import Picture from "../ui/Picture";
 import heroImage from "../../assets/landing/hero-classroom.jpg";
+import heroImageWebp from "../../assets/landing/hero-classroom.webp";
+import heroImageAvif from "../../assets/landing/hero-classroom.avif";
 
 export interface HeroData {
   title: string;
@@ -78,8 +81,10 @@ const Hero = memo(({ data, stats = [] }: HeroProps) => {
         )}
 
         <div className="mt-10 overflow-hidden rounded-3xl border border-border shadow-lg">
-          <img
-            src={heroImage}
+          <Picture
+            srcAvif={heroImageAvif}
+            srcWebp={heroImageWebp}
+            srcFallback={heroImage}
             alt="Sadguru Coaching Classes ke students padhte hue"
             width={1280}
             height={800}

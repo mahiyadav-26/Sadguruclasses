@@ -1,6 +1,9 @@
 import { memo } from "react";
 import { Check } from "lucide-react";
+import Picture from "../ui/Picture";
 import mentorImage from "../../assets/landing/mentor-portrait.jpg";
+import mentorImageWebp from "../../assets/landing/mentor-portrait.webp";
+import mentorImageAvif from "../../assets/landing/mentor-portrait.avif";
 
 const points = [
   { t: "Hindi-medium friendly", d: "Har lesson Hindi mein samjhaya — jhijhak khatam, seekhna aasan." },
@@ -14,10 +17,14 @@ const WhyChooseUs = memo(() => (
     <div className="container mx-auto max-w-5xl px-5 md:px-8">
       <div className="grid gap-10 md:grid-cols-2 md:items-center">
         <div className="overflow-hidden rounded-3xl border border-border shadow-sm order-last md:order-first">
-          <img
-            src={mentorImage}
+          <Picture
+            srcAvif={mentorImageAvif}
+            srcWebp={mentorImageWebp}
+            srcFallback={mentorImage}
             alt="Ramchandra Sir class lete hue"
-            loading="lazy"
+            width={768}
+            height={768}
+            pictureClassName="block h-full w-full"
             className="w-full h-full object-cover aspect-[4/3]"
           />
         </div>

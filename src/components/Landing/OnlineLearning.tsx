@@ -1,6 +1,9 @@
 import { memo } from "react";
 import { Monitor, Clock, BookOpen } from "lucide-react";
+import Picture from "../ui/Picture";
 import learningImage from "../../assets/landing/hybrid-learning.jpg";
+import learningImageWebp from "../../assets/landing/hybrid-learning.webp";
+import learningImageAvif from "../../assets/landing/hybrid-learning.avif";
 
 const highlights = [
   { icon: Monitor, text: "Live & Recorded Classes" },
@@ -37,12 +40,14 @@ const OnlineLearning = memo(() => (
         </div>
 
         <div className="overflow-hidden rounded-3xl border border-border shadow-sm">
-          <img
-            src={learningImage}
+          <Picture
+            srcAvif={learningImageAvif}
+            srcWebp={learningImageWebp}
+            srcFallback={learningImage}
             alt="Student online class attend karte hue"
-            loading="lazy"
             width={1280}
             height={800}
+            pictureClassName="block h-full w-full"
             className="w-full h-full object-cover aspect-[4/3]"
           />
         </div>
