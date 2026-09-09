@@ -29,7 +29,7 @@ export const MAX_THUMBNAIL_BYTES = 10 * 1024 * 1024;
 /** Signed-URL lifetime for private course videos: one year, in seconds. */
 export const VIDEO_SIGNED_URL_TTL = 365 * 24 * 3600;
 
-export type FileCheck = { ok: true } | { ok: false; error: string };
+export type FileCheck = { ok: true; error?: never } | { ok: false; error: string };
 
 export function fileExtension(name: string): string {
   return name.split(".").pop()?.toLowerCase() || "";

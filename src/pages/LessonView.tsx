@@ -60,6 +60,11 @@ import { useLessonPdfs } from "../hooks/useLessonPdfs";
 import { useLessonAttachments } from "../hooks/useLessonAttachments";
 import { useLessonProgress } from "../hooks/useLessonProgress";
 import { AttachmentRow } from "../components/lesson/AttachmentRow";
+import { PersonalMentorsPanel } from "../features/lesson/components/PersonalMentorsPanel";
+import { MyDoubtsPanel } from "../features/lesson/components/MyDoubtsPanel";
+import { LessonRatingPanel } from "../features/lesson/components/LessonRatingPanel";
+import { CommentsPanel } from "../features/lesson/components/CommentsPanel";
+import { DppCard } from "../features/lesson/components/DppCard";
 import { useDownloads } from "../hooks/useDownloads";
 import { SafeBoundary, useProtectedSurface } from "@/lib/safety";
 import { pushPlayerBusy } from "../lib/playerBusy";
@@ -2473,43 +2478,7 @@ const LessonView = () => {
                           </Suspense>
                         )}
 
-                        {activeChip === "mentors" && (
-                          <div className="px-4 py-4 space-y-4">
-                            <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                              <Users className="h-4 w-4 text-primary" />
-                              Personal Mentors
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Aapke liye dedicated mentors — direct guidance ke liye contact karein.
-                            </p>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              {[
-                                { name: "Ramchandra Sir", role: "Founder & Lead Mentor", phone: "+91 73884 59249", email: "ramchandra@sadgurucoaching.in", initials: "RV" },
-                                { name: "Priya Ma'am", role: "Spoken English Mentor", phone: "+91 73884 59249", email: "priya@sadgurucoaching.in", initials: "PM" },
-                                { name: "Rahul Sir", role: "Grammar Mentor", phone: "+91 73884 59249", email: "rahul@sadgurucoaching.in", initials: "RS" },
-                                { name: "Anjali Ma'am", role: "CG Lecturer Prep Mentor", phone: "+91 73884 59249", email: "anjali@sadgurucoaching.in", initials: "AM" },
-                              ].map((m) => (
-                                <div key={m.name} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-muted/20">
-                                  <div className="h-11 w-11 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
-                                    {m.initials}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-semibold text-sm text-foreground">{m.name}</div>
-                                    <div className="text-xs text-muted-foreground mb-2">{m.role}</div>
-                                    <div className="flex flex-wrap gap-2">
-                                      <a href={`tel:${m.phone.replace(/\s/g,'')}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                        <Phone className="h-3 w-3" /> Call
-                                      </a>
-                                      <a href={`mailto:${m.email}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                        <Mail className="h-3 w-3" /> Email
-                                      </a>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        {activeChip === "mentors" && <PersonalMentorsPanel />}
 
                         {activeChip === "ask-doubt" && currentLesson && (
                           <AskDoubtSheet
@@ -2549,183 +2518,37 @@ const LessonView = () => {
                         )}
 
                         {activeChip === "my-doubts" && (
-                          <div className="px-4 py-4">
-                            <h3 className="font-semibold text-base text-foreground mb-3 flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4 text-primary" />
-                              My Doubts
-                            </h3>
-                            {commentsLoading ? (
-                              <div className="text-center py-8">
-                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                              </div>
-                            ) : (() => {
-                              const mine = comments.filter(c => user && c.userId === user.id);
-                              if (mine.length === 0) {
-                                return (
-                                  <div className="text-center py-8 text-muted-foreground">
-                                    <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-                                    <p className="text-sm">You haven't posted any doubts yet.</p>
-                                  </div>
-                                );
-                              }
-                              return (
-                                <div className="space-y-3">
-                                  {mine.map((comment) => (
-                                    <div key={comment.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
-                                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">
-                                        {comment.userName?.charAt(0)?.toUpperCase() || '?'}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <span className="font-medium text-foreground text-sm">{comment.userName}</span>
-                                          <span className="text-xs text-muted-foreground">{formatRelativeTime(comment.createdAt)}</span>
-                                        </div>
-                                        <p className="text-foreground text-sm whitespace-pre-wrap">{comment.message}</p>
-                                        {comment.imageUrl && (
-                                          <SmartImage src={comment.imageUrl} width={320} height={240} alt="" className="mt-2 max-w-xs rounded-lg border object-contain" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })()}
-                          </div>
+                          <MyDoubtsPanel comments={comments} loading={commentsLoading} userId={user?.id} />
                         )}
 
                         {activeChip === "rating" && (
-                          <div className="px-4 py-6">
-                            <h3 className="font-semibold text-base text-foreground mb-2 flex items-center gap-2">
-                              <Star className="h-4 w-4 text-amber-500" />
-                              Rate this Lesson
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-4">Aapka feedback humare liye important hai.</p>
-                            <div className="flex items-center gap-2 mb-4" onMouseLeave={() => setRatingHover(0)}>
-                              {[1, 2, 3, 4, 5].map((star) => {
-                                const filled = (ratingHover || ratingValue) >= star;
-                                return (
-                                  <button
-                                    key={star}
-                                    onClick={() => setRatingValue(star)}
-                                    onMouseEnter={() => setRatingHover(star)}
-                                    className="p-1 transition-transform hover:scale-110"
-                                    aria-label={`${star} star`}
-                                  >
-                                    <Star className={cn("h-8 w-8", filled ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40")} />
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <Textarea
-                              placeholder="Share your feedback (optional)..."
-                              value={ratingComment}
-                              onChange={(e) => setRatingComment(e.target.value)}
-                              className="min-h-[80px] resize-none mb-3"
-                            />
-                            <Button
-                              disabled={ratingValue === 0 || ratingSaving || !user}
-                              onClick={submitRating}
-                              className="gap-2"
-                            >
-                              {ratingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                              {ratingSubmitted ? "Update Rating" : "Submit Rating"}
-                            </Button>
-                            {ratingCount > 0 && (
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Average {ratingAvg.toFixed(1)} ★ from {ratingCount} student{ratingCount === 1 ? "" : "s"}
-                              </p>
-                            )}
-                          </div>
+                          <LessonRatingPanel
+                            ratingValue={ratingValue}
+                            ratingHover={ratingHover}
+                            ratingComment={ratingComment}
+                            ratingSaving={ratingSaving}
+                            ratingSubmitted={ratingSubmitted}
+                            ratingCount={ratingCount}
+                            ratingAvg={ratingAvg}
+                            canSubmit={!!user}
+                            onHover={setRatingHover}
+                            onSelect={setRatingValue}
+                            onCommentChange={setRatingComment}
+                            onSubmit={submitRating}
+                          />
                         )}
 
                         {activeChip === "comments" && (
-                          <div className="px-4 py-4">
-                            <div className="space-y-6">
-                                <h3 className="font-semibold text-lg flex items-center gap-2 text-foreground">
-                                    <MessageCircle className="h-5 w-5 text-primary" />
-                                    Comments ({comments.length})
-                                </h3>
-
-                                {/* Comments List */}
-                                <div className="space-y-4">
-                                    {commentsLoading ? (
-                                        <div className="text-center py-8">
-                                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                        </div>
-                                    ) : comments.length === 0 ? (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-                                            <p>No comments yet. Open <span className="font-semibold">Ask Doubt</span> to start the discussion.</p>
-                                        </div>
-                                    ) : (
-                                        comments.map((comment) => (
-                                            <div key={comment.id} className="flex gap-3 p-4 bg-muted/30 rounded-lg">
-                                                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">
-                                                    {comment.userName?.charAt(0)?.toUpperCase() || '?'}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="font-medium text-foreground text-sm">
-                                                            {comment.userName}
-                                                        </span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {formatRelativeTime(comment.createdAt)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-foreground text-sm whitespace-pre-wrap">
-                                                        {comment.message}
-                                                    </p>
-                                                    {comment.imageUrl && (
-                                                        <SmartImage
-                                                            src={comment.imageUrl}
-                                                            width={320}
-                                                            height={240}
-                                                            alt="Comment attachment"
-                                                            className="mt-2 max-w-xs rounded-lg border cursor-pointer hover:opacity-90 transition-opacity object-contain"
-                                                            onClick={() => void openResource({ url: comment.imageUrl!, kind: 'image' })}
-                                                        />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Bottom comment input — quick add */}
-                            <div
-                              className="sticky bottom-0 -mx-4 mt-4 bg-background/95 border-t border-border px-4 py-3 flex items-center gap-2"
-                              style={{
-                                paddingBottom: "max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))",
-                                paddingLeft: "max(1rem, env(safe-area-inset-left))",
-                                paddingRight: "max(1rem, env(safe-area-inset-right))",
-                              }}
-                            >
-
-                              <input
-                                type="text"
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handlePostComment();
-                                  }
-                                }}
-                                aria-label="Write Comment"
-                                placeholder="Write Comment"
-                                className="flex-1 bg-transparent text-base md:text-sm text-foreground placeholder:text-muted-foreground outline-none py-2"
-                              />
-                              <button
-                                onClick={handlePostComment}
-                                disabled={isPostingComment || (!newComment.trim() && !commentImage)}
-                                aria-label="Send comment"
-                                className="text-primary disabled:text-muted-foreground/40 transition-colors p-3 -m-1.5"
-                              >
-                                {isPostingComment ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                              </button>
-                            </div>
-                          </div>
+                          <CommentsPanel
+                            comments={comments}
+                            loading={commentsLoading}
+                            newComment={newComment}
+                            isPosting={isPostingComment}
+                            postDisabled={isPostingComment || (!newComment.trim() && !commentImage)}
+                            onCommentChange={setNewComment}
+                            onPost={handlePostComment}
+                            onOpenImage={(url) => void openResource({ url, kind: 'image' })}
+                          />
                         )}
                       </div>
                     </div>
@@ -2734,47 +2557,7 @@ const LessonView = () => {
 
                     {/* DPP / Quiz Section — hidden entirely while loading or when empty */}
                     {!dppsLoading && lessonDpps.length > 0 && (
-
-                      <Card className="border border-border">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                            <Target className="h-4 w-4 text-primary" />
-                            Attempt DPP
-                            {lessonDpps.length > 0 && (
-                              <Badge variant="secondary" className="ml-auto">{lessonDpps.length}</Badge>
-                            )}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                          {dppsLoading ? (
-                            <div className="py-6 text-center">
-                              <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-border">
-                              {lessonDpps.map((dpp) => (
-                                <button
-                                  key={dpp.id}
-                                  onClick={() => navigate(`/quiz/${dpp.id}`)}
-                                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-accent/10 transition-colors group"
-                                >
-                                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                    <Target className="h-4 w-4 text-primary" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{dpp.title}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {dpp.type?.toUpperCase() || "DPP"}
-                                      {dpp.total_marks ? ` · ${dpp.total_marks} marks` : ""}
-                                    </p>
-                                  </div>
-                                  <Badge variant="outline" className="text-xs shrink-0">Attempt</Badge>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                      <DppCard dpps={lessonDpps} loading={dppsLoading} />
                     )}
 
                     {/* Video Recommendations removed — distracting element */}
