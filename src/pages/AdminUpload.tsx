@@ -45,6 +45,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "../lib/utils";
+import {
+  checkUploadFile,
+  checkThumbnailFile,
+  checkVideoFile,
+  randomObjectName,
+  videoStoragePath,
+  storageUri,
+  nextPosition,
+  VIDEO_SIGNED_URL_TTL,
+} from "../features/admin-upload/lib/uploadRules";
 
 type UploadType = "VIDEO" | "PDF" | "DPP" | "DPP_ATTEMPT" | "NOTES" | "TEST" | "LIVE";
 
@@ -326,7 +336,7 @@ const AdminUpload = () => {
         course_id: selectedCourseId,
         title: newChapterTitle.trim(),
         code: newChapterCode.trim(),
-        position: newChapterPosition || chapters.length + 1,
+        position: nextPosition(newChapterPosition, chapters.length),
       });
       if (error) throw error;
       toast.success("Chapter created!");
@@ -354,7 +364,7 @@ const AdminUpload = () => {
         parent_id: selectedChapterId,
         title: newSubfolderTitle.trim(),
         code: newSubfolderCode.trim(),
-        position: newSubfolderPosition || subChapters.length + 1,
+        position: nextPosition(newSubfolderPosition, subChapters.length),
       });
       if (error) throw error;
       toast.success("Sub-folder created!");
@@ -370,26 +380,11 @@ const AdminUpload = () => {
     }
   };
 
-  // ─── MIME validation ────────────────────────────────────────────────────
-  const BLOCKED_EXTS = ['exe','html','htm','js','php','sh','bat','cmd','vbs','py','rb','mjs','ts','tsx','json','xml','svg'];
-  const ALLOWED_MIME_TYPES = [
-    'application/pdf','application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'image/jpeg','image/png','image/gif','image/webp',
-    'video/mp4','video/webm','video/quicktime','video/x-msvideo','video/x-matroska',
-    'application/octet-stream',
-  ];
-
+  // ─── MIME validation (rules live in features/admin-upload/lib/uploadRules) ──
   const validateFile = (file: File): boolean => {
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    if (BLOCKED_EXTS.includes(ext)) {
-      toast.error(`File type ".${ext}" is not allowed for security reasons`);
-      return false;
-    }
-    if (!ALLOWED_MIME_TYPES.includes(file.type) && file.type !== '') {
-      toast.error(`File type "${file.type}" is not allowed. Use PDF, Office docs, images, or video.`);
+    const result = checkUploadFile(file);
+    if (!result.ok) {
+      toast.error(result.error);
       return false;
     }
     return true;
@@ -398,25 +393,23 @@ const AdminUpload = () => {
   // ─── Self-storage: upload video file to course-videos bucket ────────
   const handleVideoFileUpload = async (file: File) => {
     if (!validateFile(file)) return;
-    const maxSize = 500 * 1024 * 1024; // 500MB
-    if (file.size > maxSize) {
-      toast.error("Video file must be under 500MB");
+    const sizeCheck = checkVideoFile(file);
+    if (!sizeCheck.ok) {
+      toast.error(sizeCheck.error);
       return;
     }
     setVideoFile(file);
     setVideoFileUploading(true);
     setVideoUploadProgress(0);
     try {
-      const ext = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-      const coursePrefix = selectedCourseId ? `course-${selectedCourseId}` : 'uploads';
-      const filePath = `${coursePrefix}/uploads/${fileName}`;
+      const fileName = randomObjectName(file.name);
+      const filePath = videoStoragePath(selectedCourseId, fileName);
       const { error } = await supabase.storage.from('course-videos').upload(filePath, file, { upsert: false });
 
       if (error) throw error;
       setVideoUploadProgress(100);
       // course-videos is private, get signed URL
-      const { data, error: signErr } = await supabase.storage.from('course-videos').createSignedUrl(filePath, 365 * 24 * 3600);
+      const { data, error: signErr } = await supabase.storage.from('course-videos').createSignedUrl(filePath, VIDEO_SIGNED_URL_TTL);
       if (signErr) throw signErr;
       setVideoUrl(data.signedUrl);
       toast.success("Video uploaded to storage!");
@@ -430,23 +423,18 @@ const AdminUpload = () => {
 
   // ─── Self-storage: upload thumbnail to content bucket ────────────────
   const handleThumbnailFileUpload = async (file: File) => {
-    const allowedImg = ['image/jpeg','image/png','image/gif','image/webp'];
-    if (!allowedImg.includes(file.type)) {
-      toast.error("Only image files (JPG, PNG, GIF, WebP) allowed");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Thumbnail must be under 10MB");
+    const imgCheck = checkThumbnailFile(file);
+    if (!imgCheck.ok) {
+      toast.error(imgCheck.error);
       return;
     }
     setThumbnailFile(file);
     setThumbnailFileUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const fileName = `thumbnails/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+      const fileName = `thumbnails/${randomObjectName(file.name)}`;
       const { error } = await supabase.storage.from('content').upload(fileName, file, { upsert: false });
       if (error) throw error;
-      setThumbnailUrl(`storage://content/${fileName}`);
+      setThumbnailUrl(storageUri('content', fileName));
 
       toast.success("Thumbnail uploaded!");
     } catch (err: any) {
@@ -499,13 +487,11 @@ const AdminUpload = () => {
       if (uploadType !== "VIDEO" && uploadType !== "LIVE" && pdfInputMode === "url") {
         contentUrl = pdfUrl;
       } else if (uploadType !== "VIDEO" && uploadType !== "LIVE" && pdfFile) {
-        const fileExt = pdfFile.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const path = `lessons/${fileName}`;
+        const path = `lessons/${randomObjectName(pdfFile.name)}`;
         const { error: uploadError } = await supabase.storage.from('content').upload(path, pdfFile);
         if (uploadError) throw uploadError;
         // Store bucket-agnostic URI; resolver signs on read once bucket is private.
-        contentUrl = `storage://content/${path}`;
+        contentUrl = storageUri('content', path);
       } else {
         contentUrl = videoUrl;
       }
@@ -533,7 +519,7 @@ const AdminUpload = () => {
         lecture_type: uploadType,
         class_pdf_url: classPdfFinalUrl,
         thumbnail_url: thumbnailUrl.trim() || null,
-        position: lessons.length + 1,
+        position: nextPosition(null, lessons.length),
       }).select('id').single();
 
       if (error) throw error;
