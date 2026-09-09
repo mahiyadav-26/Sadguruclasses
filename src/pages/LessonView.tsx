@@ -40,6 +40,14 @@ import { type ArchiveBook } from "../components/archive";
 import { Textarea } from "../components/ui/textarea";
 import PdfViewer from "../components/video/LazyPdfViewer";
 import { lazyWithRetry } from "../lib/lazyWithRetry";
+import type { Lesson, Chapter } from "../features/lesson/types";
+import {
+  SARTHI_SUGGESTIONS,
+  formatChatTs,
+  formatRelativeTime,
+  redactPdfDebugUrl,
+} from "../features/lesson/lib/format";
+
 const DocumentReader = lazyWithRetry(() => import("../components/course/DocumentReader"));
 const PdfSelectPopup = lazyWithRetry(() => import("../components/video/PdfSelectPopup"));
 const BookmarksPanel = lazyWithRetry(() => import("../components/video/BookmarksPanel"));
@@ -75,30 +83,6 @@ import { isSyntheticPop } from "../lib/reader/overlayHistory";
 // They now live under `src/components/lesson/` for future reuse.
 
 // Type definitions
-interface Lesson {
-  id: string;
-  title: string;
-  video_url: string;
-  is_locked: boolean | null;
-  description: string | null;
-  overview: string | null;
-  course_id: number | null;
-  chapter_id: string | null;
-  created_at: string | null;
-  class_pdf_url: string | null;
-  like_count: number | null;
-  lecture_type: string | null;
-  thumbnail_url: string | null;
-  transcript_md?: string | null;
-}
-
-interface Chapter {
-  id: string;
-  code: string;
-  title: string;
-  parent_id?: string | null;
-}
-
 // CollapsiblePdfSection extracted to src/features/lesson/components/CollapsiblePdfSection.tsx
 
 const LessonView = () => {
@@ -522,19 +506,6 @@ const LessonView = () => {
     copyChatText,
   } = useLessonChat(currentLesson, chapters, course?.title);
 
-  const SARTHI_SUGGESTIONS = [
-    "Is lecture ka short summary do",
-    "Main concept explain karo",
-    "1 short example do",
-    "MCQ practice karao",
-  ];
-
-  const formatChatTs = (ts: number) => {
-    try {
-      return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    } catch { return ""; }
-  };
-
   // Comments hook
   // Comments hook
   const { comments, loading: commentsLoading, createComment, fetchComments } = useComments(currentLesson?.id || undefined);
@@ -563,15 +534,6 @@ const LessonView = () => {
   const [pdfToolbarOpen, setPdfToolbarOpen] = useState(false);
   // Downloads hook
   const { addDownload } = useDownloads();
-
-  const redactPdfDebugUrl = useCallback((raw: string): string => {
-    try {
-      const u = new URL(raw, window.location.origin);
-      return `${u.origin}${u.pathname}${u.search ? "?…" : ""}`;
-    } catch {
-      return raw.split("?")[0];
-    }
-  }, []);
 
   const shouldUsePdfReader = useCallback(async (url: string, fileName: string): Promise<boolean> => {
     if (isLikelyPdfUrl(url)) return true;
@@ -1624,22 +1586,6 @@ const LessonView = () => {
   }, [commentImagePreview]);
 
   // Format relative time
-  const formatRelativeTime = (dateString: string | null) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   const fromParam = resolveFromParam(searchParams, courseId);
   const fromMyCourses = fromParam === 'my-courses';
   const fromAllClasses = fromParam === 'all-classes';
