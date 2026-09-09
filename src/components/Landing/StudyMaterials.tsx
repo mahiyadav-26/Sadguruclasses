@@ -2,7 +2,10 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "../ui/button";
+import Picture from "../ui/Picture";
 import materialsImage from "../../assets/landing/study-materials.jpg";
+import materialsImageWebp from "../../assets/landing/study-materials.webp";
+import materialsImageAvif from "../../assets/landing/study-materials.avif";
 
 const resources = [
   { tag: "Notes", title: "Class 9–12 English — Complete Grammar Notes", desc: "Chapter-wise summaries, examples aur exam-ready practice sets." },
@@ -39,12 +42,14 @@ const StudyMaterials = memo(() => (
       </div>
 
       <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-card shadow-sm grid md:grid-cols-2">
-        <img
-          src={materialsImage}
+        <Picture
+          srcAvif={materialsImageAvif}
+          srcWebp={materialsImageWebp}
+          srcFallback={materialsImage}
           alt="Notes, practice papers aur tablet ke saath study desk"
-          loading="lazy"
           width={1280}
           height={800}
+          pictureClassName="block h-full w-full"
           className="w-full h-full object-cover aspect-[16/10]"
         />
         <div className="p-8 flex flex-col justify-center gap-4">
