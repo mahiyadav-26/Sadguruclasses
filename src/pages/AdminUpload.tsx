@@ -45,16 +45,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "../lib/utils";
-import {
-  checkUploadFile,
-  checkThumbnailFile,
-  checkVideoFile,
-  randomObjectName,
-  videoStoragePath,
-  storageUri,
-  nextPosition,
-  VIDEO_SIGNED_URL_TTL,
-} from "../features/admin-upload/lib/uploadRules";
+import { nextPosition, randomObjectName, storageUri } from "../features/admin-upload/lib/uploadRules";
+import { useAdminUploadForm } from "../features/admin-upload/hooks/useAdminUploadForm";
+import { ThumbnailUploadBlock } from "../features/admin-upload/components/ThumbnailUploadBlock";
+import { VideoUploadBlock } from "../features/admin-upload/components/VideoUploadBlock";
+import { ContentSourceBlock } from "../features/admin-upload/components/ContentSourceBlock";
 
 type UploadType = "VIDEO" | "PDF" | "DPP" | "DPP_ATTEMPT" | "NOTES" | "TEST" | "LIVE";
 
@@ -139,16 +134,26 @@ const AdminUpload = () => {
   const [classPdfUrl, setClassPdfUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
 
-  // Self-storage drag-and-drop states
-  const [videoInputMode, setVideoInputMode] = useState<"url" | "file">("url");
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoFileUploading, setVideoFileUploading] = useState(false);
-  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
-  const [thumbnailInputMode, setThumbnailInputMode] = useState<"url" | "file">("url");
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailFileUploading, setThumbnailFileUploading] = useState(false);
-  const [videoDragActive, setVideoDragActive] = useState(false);
-  const [thumbDragActive, setThumbDragActive] = useState(false);
+  // Self-storage media (video + thumbnail) state & uploads
+  const {
+    videoInputMode, setVideoInputMode,
+    videoFile, videoFileUploading, videoUploadProgress,
+    videoDragActive, setVideoDragActive,
+    thumbnailInputMode, setThumbnailInputMode,
+    thumbnailFile, thumbnailFileUploading,
+    thumbDragActive, setThumbDragActive,
+    validateFile,
+    handleVideoFileUpload,
+    handleThumbnailFileUpload,
+    handleDrag,
+    handleVideoDrop,
+    handleThumbDrop,
+    resetMedia,
+  } = useAdminUploadForm({
+    selectedCourseId,
+    onVideoUrl: setVideoUrl,
+    onThumbnailUrl: setThumbnailUrl,
+  });
 
   // Multi-PDF attachments for new lesson
   const [pdfAttachments, setPdfAttachments] = useState<File[]>([]);
@@ -380,94 +385,6 @@ const AdminUpload = () => {
     }
   };
 
-  // ─── MIME validation (rules live in features/admin-upload/lib/uploadRules) ──
-  const validateFile = (file: File): boolean => {
-    const result = checkUploadFile(file);
-    if (!result.ok) {
-      toast.error(result.error);
-      return false;
-    }
-    return true;
-  };
-
-  // ─── Self-storage: upload video file to course-videos bucket ────────
-  const handleVideoFileUpload = async (file: File) => {
-    if (!validateFile(file)) return;
-    const sizeCheck = checkVideoFile(file);
-    if (!sizeCheck.ok) {
-      toast.error(sizeCheck.error);
-      return;
-    }
-    setVideoFile(file);
-    setVideoFileUploading(true);
-    setVideoUploadProgress(0);
-    try {
-      const fileName = randomObjectName(file.name);
-      const filePath = videoStoragePath(selectedCourseId, fileName);
-      const { error } = await supabase.storage.from('course-videos').upload(filePath, file, { upsert: false });
-
-      if (error) throw error;
-      setVideoUploadProgress(100);
-      // course-videos is private, get signed URL
-      const { data, error: signErr } = await supabase.storage.from('course-videos').createSignedUrl(filePath, VIDEO_SIGNED_URL_TTL);
-      if (signErr) throw signErr;
-      setVideoUrl(data.signedUrl);
-      toast.success("Video uploaded to storage!");
-    } catch (err: any) {
-      toast.error("Video upload failed: " + err.message);
-      setVideoFile(null);
-    } finally {
-      setVideoFileUploading(false);
-    }
-  };
-
-  // ─── Self-storage: upload thumbnail to content bucket ────────────────
-  const handleThumbnailFileUpload = async (file: File) => {
-    const imgCheck = checkThumbnailFile(file);
-    if (!imgCheck.ok) {
-      toast.error(imgCheck.error);
-      return;
-    }
-    setThumbnailFile(file);
-    setThumbnailFileUploading(true);
-    try {
-      const fileName = `thumbnails/${randomObjectName(file.name)}`;
-      const { error } = await supabase.storage.from('content').upload(fileName, file, { upsert: false });
-      if (error) throw error;
-      setThumbnailUrl(storageUri('content', fileName));
-
-      toast.success("Thumbnail uploaded!");
-    } catch (err: any) {
-      toast.error("Thumbnail upload failed: " + err.message);
-      setThumbnailFile(null);
-    } finally {
-      setThumbnailFileUploading(false);
-    }
-  };
-
-  // ─── Drag handlers ──────────────────────────────────────────────────
-  const handleDrag = (e: React.DragEvent, setActive: (v: boolean) => void, active: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setActive(true);
-    else if (e.type === "dragleave") setActive(false);
-  };
-
-  const handleVideoDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setVideoDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleVideoFileUpload(file);
-  };
-
-  const handleThumbDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setThumbDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleThumbnailFileUpload(file);
-  };
 
   // ─── Upload ─────────────────────────────────────────────────────────────
   const handleUpload = async () => {
@@ -560,7 +477,7 @@ const AdminUpload = () => {
       }
 
       toast.success("Content uploaded");
-      setTitle(""); setVideoUrl(""); setPdfFile(null); setPdfUrl(""); setDescription(""); setOverviewText(""); setTranscriptMd(""); setClassPdfFile(null); setClassPdfUrl(""); setPdfAttachments([]); setThumbnailUrl(""); setVideoFile(null); setThumbnailFile(null); setVideoUploadProgress(0);
+      setTitle(""); setVideoUrl(""); setPdfFile(null); setPdfUrl(""); setDescription(""); setOverviewText(""); setTranscriptMd(""); setClassPdfFile(null); setClassPdfUrl(""); setPdfAttachments([]); setThumbnailUrl(""); resetMedia();
       const { data } = await supabase.from('lessons').select('*')
         .eq('chapter_id', selectedChapterId).order('position', { ascending: true });
       setLessons(data || []);
@@ -798,196 +715,46 @@ const AdminUpload = () => {
       </div>
 
       {/* Thumbnail — drag-and-drop + URL toggle */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-1.5 text-sm font-semibold">
-            <Camera className="h-4 w-4 text-primary" />
-            Thumbnail <span className="text-xs font-normal text-muted-foreground">(optional)</span>
-          </Label>
-          <div className="flex gap-1 bg-muted rounded-md p-0.5">
-            <button type="button" className={cn("px-3 py-1.5 text-xs rounded min-h-[36px]", thumbnailInputMode === 'file' ? 'bg-background shadow text-foreground' : 'text-muted-foreground')} onClick={() => setThumbnailInputMode("file")}>
-              <FileUp className="h-3 w-3 inline mr-1" />Upload
-            </button>
-            <button type="button" className={cn("px-3 py-1.5 text-xs rounded min-h-[36px]", thumbnailInputMode === 'url' ? 'bg-background shadow text-foreground' : 'text-muted-foreground')} onClick={() => setThumbnailInputMode("url")}>
-              <LinkIcon className="h-3 w-3 inline mr-1" />URL
-            </button>
-          </div>
-        </div>
-        {thumbnailInputMode === "file" ? (
-          <div
-            onDragEnter={e => handleDrag(e, setThumbDragActive, thumbDragActive)}
-            onDragOver={e => handleDrag(e, setThumbDragActive, thumbDragActive)}
-            onDragLeave={e => handleDrag(e, setThumbDragActive, false)}
-            onDrop={handleThumbDrop}
-            className={cn(
-              "border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer",
-              thumbDragActive ? "border-primary bg-primary/5 scale-[1.01]" : "border-muted-foreground/20 hover:border-primary/40",
-              thumbnailFileUploading && "pointer-events-none opacity-60"
-            )}
-            onClick={() => document.getElementById('thumbFileInput')?.click()}
-          >
-            <input
-              id="thumbFileInput"
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleThumbnailFileUpload(f); e.target.value = ''; }}
-            />
-            {thumbnailFileUploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Uploading thumbnail...</p>
-              </div>
-            ) : thumbnailFile && thumbnailUrl ? (
-              <div className="flex flex-col items-center gap-2">
-                <img src={thumbnailUrl} alt="Thumbnail" className="w-32 h-20 object-cover rounded-lg border" />
-                <p className="text-xs text-primary font-medium">{thumbnailFile.name}</p>
-                <p className="text-[10px] text-muted-foreground">Drop or tap to replace</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1">
-                <Camera className="h-8 w-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground font-medium">Drag & drop thumbnail image</p>
-                <p className="text-xs text-muted-foreground">or tap to browse • JPG, PNG, WebP (max 10MB)</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            <Input placeholder="https://... thumbnail image URL" value={thumbnailUrl} onChange={e => setThumbnailUrl(e.target.value)} className="h-11" />
-            {thumbnailUrl && (
-              <img src={thumbnailUrl} alt="Thumbnail preview" className="w-24 h-16 object-cover rounded-lg border mt-1" />
-            )}
-          </>
-        )}
-      </div>
+      <ThumbnailUploadBlock
+        mode={thumbnailInputMode}
+        onModeChange={setThumbnailInputMode}
+        thumbnailUrl={thumbnailUrl}
+        onThumbnailUrlChange={setThumbnailUrl}
+        thumbnailFile={thumbnailFile}
+        uploading={thumbnailFileUploading}
+        dragActive={thumbDragActive}
+        onDrag={handleDrag}
+        setDragActive={setThumbDragActive}
+        onDrop={handleThumbDrop}
+        onFilePicked={handleThumbnailFileUpload}
+      />
 
       {(uploadType === "VIDEO" || uploadType === "LIVE") ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>{uploadType === "LIVE" ? "YouTube Live / Meeting URL" : "Video Source"}</Label>
-            {uploadType === "VIDEO" && (
-              <div className="flex gap-1 bg-muted rounded-md p-0.5">
-                <button type="button" className={cn("px-3 py-1.5 text-xs rounded min-h-[36px]", videoInputMode === 'url' ? 'bg-background shadow text-foreground' : 'text-muted-foreground')} onClick={() => setVideoInputMode("url")}>
-                  <LinkIcon className="h-3 w-3 inline mr-1" />URL
-                </button>
-                <button type="button" className={cn("px-3 py-1.5 text-xs rounded min-h-[36px]", videoInputMode === 'file' ? 'bg-background shadow text-foreground' : 'text-muted-foreground')} onClick={() => setVideoInputMode("file")}>
-                  <FileUp className="h-3 w-3 inline mr-1" />Self Storage
-                </button>
-              </div>
-            )}
-          </div>
-          {(uploadType === "LIVE" || videoInputMode === "url") ? (
-            <>
-              <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="https://..." value={videoUrl} onChange={e => setVideoUrl(e.target.value)} className="pl-10 h-12" />
-              </div>
-              {videoUrl && <MediaPreview url={videoUrl} type="video" />}
-            </>
-          ) : (
-            /* Self Storage drag-and-drop video upload */
-            <div
-              onDragEnter={e => handleDrag(e, setVideoDragActive, videoDragActive)}
-              onDragOver={e => handleDrag(e, setVideoDragActive, videoDragActive)}
-              onDragLeave={e => handleDrag(e, setVideoDragActive, false)}
-              onDrop={handleVideoDrop}
-              className={cn(
-                "border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer",
-                videoDragActive ? "border-primary bg-primary/5 scale-[1.01]" : "border-muted-foreground/20 hover:border-primary/40",
-                videoFileUploading && "pointer-events-none opacity-60"
-              )}
-              onClick={() => document.getElementById('videoFileInput')?.click()}
-            >
-              <input
-                id="videoFileInput"
-                type="file"
-                accept="video/mp4,video/webm,video/quicktime,video/x-matroska,.mp4,.webm,.mov,.mkv,.avi"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoFileUpload(f); e.target.value = ''; }}
-              />
-              {videoFileUploading ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="text-sm font-medium text-foreground">Uploading video...</p>
-                  <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden">
-                    <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${videoUploadProgress}%` }} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{videoFile?.name}</p>
-                </div>
-              ) : videoFile && videoUrl ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
-                    <Video className="h-8 w-8 text-green-600 dark:text-green-400" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">{videoFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB • Uploaded ✓</p>
-                  <p className="text-[10px] text-muted-foreground">Drop or tap to replace</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-primary/10">
-                    <Upload className="h-8 w-8 text-primary/60" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">Drag & drop video file</p>
-                  <p className="text-xs text-muted-foreground">or tap to browse • MP4, WebM, MOV, MKV (max 500MB)</p>
-                  <Badge variant="outline" className="text-[10px] mt-1">Self Storage → course-videos bucket</Badge>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <VideoUploadBlock
+          isLive={uploadType === "LIVE"}
+          mode={videoInputMode}
+          onModeChange={setVideoInputMode}
+          videoUrl={videoUrl}
+          onVideoUrlChange={setVideoUrl}
+          videoFile={videoFile}
+          uploading={videoFileUploading}
+          progress={videoUploadProgress}
+          dragActive={videoDragActive}
+          onDrag={handleDrag}
+          setDragActive={setVideoDragActive}
+          onDrop={handleVideoDrop}
+          onFilePicked={handleVideoFileUpload}
+        />
       ) : (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Upload {uploadType}</Label>
-            <div className="flex gap-1 bg-muted rounded-md p-0.5">
-              <button type="button" className={cn("px-3 py-1.5 text-xs rounded min-h-[36px]", pdfInputMode === 'file' ? 'bg-background shadow text-foreground' : 'text-muted-foreground')} onClick={() => setPdfInputMode("file")}>
-                <FileUp className="h-3 w-3 inline mr-1" />File
-              </button>
-              <button type="button" className={cn("px-3 py-1.5 text-xs rounded min-h-[36px]", pdfInputMode === 'url' ? 'bg-background shadow text-foreground' : 'text-muted-foreground')} onClick={() => setPdfInputMode("url")}>
-                <LinkIcon className="h-3 w-3 inline mr-1" />URL
-              </button>
-            </div>
-          </div>
-          {pdfInputMode === "file" ? (
-            <>
-              <div className="border-2 border-dashed border-primary/30 rounded-lg p-6 text-center hover:border-primary/60 transition-colors">
-                <input
-                  id="pdfFile"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.jpg,.jpeg,.png,.gif"
-                  onChange={e => setPdfFile(e.target.files?.[0] || null)}
-                  className="hidden"
-                />
-                <input
-                  id="pdfCamera"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={e => setPdfFile(e.target.files?.[0] || null)}
-                  className="hidden"
-                />
-                <label htmlFor="pdfFile" className="cursor-pointer block">
-                  <FileUp className="h-8 w-8 mx-auto text-primary/50 mb-2" />
-                  {pdfFile
-                    ? <p className="text-primary font-medium text-sm">{pdfFile.name}</p>
-                    : <p className="text-muted-foreground text-sm">Tap to select file</p>}
-                </label>
-                <label htmlFor="pdfCamera" className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-muted rounded-full text-xs text-muted-foreground cursor-pointer hover:bg-muted/80 transition-colors">
-                  <Camera className="h-3.5 w-3.5" />
-                  Use Camera
-                </label>
-              </div>
-              {pdfFile && <MediaPreview file={pdfFile} type="pdf" />}
-            </>
-          ) : (
-            <div className="relative">
-              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Paste direct link..." value={pdfUrl} onChange={e => setPdfUrl(e.target.value)} className="pl-10 h-12" />
-            </div>
-          )}
-        </div>
+        <ContentSourceBlock
+          uploadType={uploadType}
+          mode={pdfInputMode}
+          onModeChange={setPdfInputMode}
+          file={pdfFile}
+          onFileChange={setPdfFile}
+          url={pdfUrl}
+          onUrlChange={setPdfUrl}
+        />
       )}
 
       {/* ── Overview tab content ── */}
