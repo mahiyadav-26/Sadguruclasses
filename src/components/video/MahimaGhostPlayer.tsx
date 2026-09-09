@@ -2,21 +2,20 @@ import { useState, useCallback, useRef, useEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { 
   Play, Pause, VolumeX,
-  X, ArrowLeft, Bookmark as BookmarkIcon
+  Bookmark as BookmarkIcon
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 import EndScreenOverlay from "./EndScreenOverlay";
 import SeekBar from "./SeekBar";
 import birdLogo from "../../assets/branding/nb-mark.webp";
-import nbLogo from "../../assets/branding/nb-mark.webp";
-const bharatBirdLogo = birdLogo;
-import { useOrientation } from "../../hooks/useOrientation";
-import SettingsGearIcon from "../icons/SettingsGearIcon";
-import RotatePhoneIcon from "../icons/RotatePhoneIcon";
-import playButtonIcon from "../../assets/icons/play-button.svg";
-import { SkipIcon } from "./SkipIcon";
 const nbBirdLogo = birdLogo;
+import { useOrientation } from "../../hooks/useOrientation";
+import RotatePhoneIcon from "../icons/RotatePhoneIcon";
+import { PlayerTopOverlay } from "./PlayerTopOverlay";
+import { PlayerBrandMasks } from "./PlayerBrandMasks";
+import { PlayerCenterControls } from "./PlayerCenterControls";
+import { PlayerSettingsMenu } from "./PlayerSettingsMenu";
 
 import { cn } from "../../lib/utils";
 import { extractYoutubeId } from "../../lib/videoUtils";
@@ -526,6 +525,12 @@ const MahimaGhostPlayer = memo(({
     toggleControls();
   }, [toggleControls]);
 
+  const handleTopOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (Date.now() - lastTouchToggleAtRef.current < 350) return;
+    toggleControlsSoft();
+  }, [toggleControlsSoft]);
+
 
   // Stamped on every touch interaction. Touch screens fire SYNTHETIC mouse
   // events (mousemove/mouseup/click) ~0–700ms AFTER touchend. Without this
@@ -1034,130 +1039,21 @@ const MahimaGhostPlayer = memo(({
           />
         )}
 
-        {/* TOP OVERLAY - Title + Exit button */}
-        <div
-          // @ts-expect-error - `inert` is a valid HTML attribute; older React types may not include it.
-          inert={showControls ? undefined : ""}
-          className={cn(
-            "absolute top-0 left-0 right-0 z-[55] flex items-start justify-between p-3 md:p-4",
-            showControls ? "opacity-100 transition-opacity duration-100 ease-out motion-reduce:transition-none" : "opacity-0 pointer-events-none transition-opacity duration-75 ease-in motion-reduce:transition-none"
-          )}
-          style={isFakeFullscreen ? {
-            // Landscape safe-area (audit H-4): keep the exit arrow + title
-            // clear of the notch / hole-punch cutout.
-            paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-            paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-            paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-          } : undefined}
-          onClick={(e) => {
-            if (e.target !== e.currentTarget) return;
-            // Dedupe synthetic mouse-click that follows a touch-driven toggle
-            // (would otherwise show→hide instantly in fullscreen).
-            if (Date.now() - lastTouchToggleAtRef.current < 350) return;
-            toggleControlsSoft();
-          }}
-        >
-          {isFakeFullscreen ? (
-            <button
-              className="flex items-center justify-center bg-black/60 rounded-full p-2 mr-3 shrink-0 pointer-events-auto active:scale-90 transition-transform"
-                onClick={(e) => { e.stopPropagation(); applyFullscreen(false); showControlsNow(); }}
-              title="Exit fullscreen"
-              aria-label="Exit fullscreen"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-          ) : null}
-          <div className="flex-1 min-w-0">
-            {title && (
-              <h2 className="text-white text-sm md:text-base font-semibold line-clamp-1 drop-shadow-md">
-                {title}
-              </h2>
-            )}
-            {subtitle && (
-              <p className="text-white/70 text-xs mt-0.5 drop-shadow">{subtitle}</p>
-            )}
-          </div>
-        </div>
+        <PlayerTopOverlay
+          showControls={showControls}
+          isFakeFullscreen={isFakeFullscreen}
+          title={title}
+          subtitle={subtitle}
+          onExitFullscreen={() => { applyFullscreen(false); showControlsNow(); }}
+          onBackgroundClick={handleTopOverlayClick}
+        />
 
-        {showInfinityLogo && (
-          /* Bird logo — precisely covers YouTube "More videos" / infinity chip.
-             Lives INSIDE the rotating outer container, so bottom-left stays
-             glued to the same corner of the video content across portrait,
-             landscape CSS-rotation, and native fake-fullscreen. */
-          <div
-            className="absolute z-[52] pointer-events-none select-none flex items-center justify-center"
-            style={{
-              // Landscape: responsive % sizing matching YouTube ∞ chip (see
-              // docs/audit/2026-07-24-yt-infinity-chip-landscape.md).
-              // Portrait: fixed 34px, tuned offsets. Fake-fullscreen bumps portrait offsets.
-              ...(shouldUseLandscapePortalMask
-                ? {
-                    width: '5.8%',
-                    aspectRatio: '1 / 1',
-                    left: '0.4%',
-                    bottom: '1.6%',
-                    transform: 'translateY(-6px) translateX(18px) scale(0.85)',
-                    transformOrigin: 'center center',
-                  }
-                : isFakeFullscreen
-                  ? { bottom: '22px', left: '52px' }
-                  : { bottom: '18px', left: '44px' }),
-            }}
-          >
-            <img
-              src={birdLogo}
-              alt=""
-              className="rounded-full"
-              style={{
-                ...(shouldUseLandscapePortalMask
-                  ? { width: '100%', height: '100%' }
-                  : { width: '34px', height: '34px' }),
-                filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.85))',
-              }}
-              draggable={false}
-            />
-          </div>
-        )}
-
-
-        {showYoutubeMask && (
-          /* Bottom-right brand mask — covers YouTube white label watermark exactly, untouchable */
-          <div
-            className="absolute z-[35] select-none flex items-center"
-            style={{
-              right: 52,
-              bottom: 24,
-              height: '28px',
-              paddingLeft: '6px',
-              paddingRight: '10px',
-              background: 'rgba(30,30,30,0.97)',
-              pointerEvents: 'none',
-              gap: '5px',
-              borderRadius: '4px',
-            }}
-          >
-            <img
-              src={bharatBirdLogo}
-              alt=""
-              draggable={false}
-              className="rounded-full"
-              style={{
-                height: '22px',
-                width: '22px',
-              }}
-            />
-            <span
-              className="font-bold tracking-wider whitespace-nowrap uppercase"
-              style={{
-                fontSize: '11px',
-                letterSpacing: '0.08em',
-                color: 'rgba(255,255,255,0.9)',
-              }}
-            >
-              Bharat
-            </span>
-          </div>
-        )}
+        <PlayerBrandMasks
+          showInfinityLogo={showInfinityLogo}
+          showYoutubeMask={showYoutubeMask}
+          isLandscapeRotation={isLandscapeRotation}
+          isFakeFullscreen={isFakeFullscreen}
+        />
 
 
         {/* GHOST OVERLAY — inside the rotating outer container, so all controls rotate correctly with the video. */}
@@ -1436,83 +1332,17 @@ const MahimaGhostPlayer = memo(({
             <LongPressSpeedBadge active={isLongPressSpeed} />
 
 
-            {/* Center controls: skip-back (left edge) | play (center) | skip-forward (right edge) */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-4 md:px-6">
-              <div
-                className="relative h-full w-full"
-                style={{
-                  width: isFakeFullscreen || isLandscapeRotation ? 'min(80%, 42rem)' : 'min(76%, 28rem)',
-                  // Portrait-only: align our center trio with YouTube's native play button
-                  // (which sits at true iframe center). Remove prior -12px nudge.
-                  transform: undefined,
-                }}
-              >
-              {/* Skip back 10s — left thumb zone */}
-              <button
-                className={cn(
-                  "absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center bg-transparent border-none min-w-[72px] min-h-[72px]",
-                  "transition-transform duration-200 active:scale-90",
-                  showControls ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-90 pointer-events-none"
-                )}
-                data-player-control="true"
-                onClick={(e) => { e.stopPropagation(); skipBackward(); showControlsNow(); }}
-                title="Backward 10s"
-                aria-label="Backward 10s"
-              >
-                <SkipIcon
-                  direction="back"
-                  className={cn(
-                    "w-10 h-10 md:w-11 md:h-11",
-                    (isLandscapeRotation || !isPortrait) && "w-12 h-12 md:w-14 md:h-14"
-                  )}
-                  style={{ filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.9))' }}
-                />
-              </button>
-
-              {/* Play / Pause — dead center */}
-              <button
-                className={cn(
-                  "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center bg-transparent border-none min-w-[112px] min-h-[112px] md:min-w-[128px] md:min-h-[128px] rounded-full",
-                  "transition-transform duration-200 active:scale-90",
-                  "[touch-action:manipulation] [-webkit-tap-highlight-color:transparent]",
-                  showControls ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-90 pointer-events-none"
-                )}
-                data-player-control="true"
-                onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); showControlsNow(5000); }}
-                onClick={(e) => { e.stopPropagation(); togglePlay(); showControlsNow(5000); }}
-                title="Play/Pause"
-                aria-label="Play/Pause"
-              >
-                {isPlaying ? (
-                  <Pause className="w-14 h-14 md:w-16 md:h-16 text-white" fill="white" style={{ filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.9))' }} />
-                ) : (
-                  <img src={playButtonIcon} alt="Play/Pause" className="w-16 h-16 md:w-20 md:h-20" style={{ filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.9))' }} />
-                )}
-              </button>
-
-              {/* Skip forward 10s — right thumb zone */}
-              <button
-                className={cn(
-                  "absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center bg-transparent border-none min-w-[72px] min-h-[72px]",
-                  "transition-transform duration-200 active:scale-90",
-                  showControls ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-90 pointer-events-none"
-                )}
-                data-player-control="true"
-                onClick={(e) => { e.stopPropagation(); skipForward(); showControlsNow(); }}
-                title="Forward 10s"
-                aria-label="Forward 10s"
-              >
-                <SkipIcon
-                  direction="forward"
-                  className={cn(
-                    "w-10 h-10 md:w-11 md:h-11",
-                    (isLandscapeRotation || !isPortrait) && "w-12 h-12 md:w-14 md:h-14"
-                  )}
-                  style={{ filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.9))' }}
-                />
-              </button>
-              </div>
-            </div>
+            <PlayerCenterControls
+              showControls={showControls}
+              isPlaying={isPlaying}
+              isLandscapeRotation={isLandscapeRotation}
+              isFakeFullscreen={isFakeFullscreen}
+              isPortrait={isPortrait}
+              onTogglePlay={togglePlay}
+              onSkipBackward={skipBackward}
+              onSkipForward={skipForward}
+              onShowControls={showControlsNow}
+            />
           </div>
 
           {/* End Screen + click blocker */}
@@ -1644,34 +1474,13 @@ const MahimaGhostPlayer = memo(({
 
             {/* Right controls — settings + rotate (larger touch targets for visibility) */}
             <div className="flex items-center gap-3">
-              {/* Settings gear — speed menu */}
-              <div className="relative z-10">
-                <button
-                  className="h-12 w-12 md:h-13 md:w-13 flex items-center justify-center outline-none focus:outline-none pointer-events-auto active:scale-90 transition-transform focus-visible:ring-2 focus-visible:ring-white/80 rounded-md"
-                  onClick={() => {
-                    showControlsNow();
-                    setShowSpeedMenu(!showSpeedMenu);
-                  }}
-                  title="Playback speed"
-                  aria-label="Playback speed and quality"
-                  aria-haspopup="menu"
-                  aria-expanded={showSpeedMenu}
-                >
-                  <SettingsGearIcon
-                    className="h-8 w-8 md:h-9 md:w-9 text-white pointer-events-none"
-                    style={{ filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.95))' }}
-                  />
-                </button>
-                {showSpeedMenu && (
-                  <div className="absolute bottom-full right-0 mb-2 bg-black/95 rounded-lg py-1 min-w-[88px] animate-in fade-in slide-in-from-bottom-2 duration-150 z-20">
-                    {[0.75, 1, 1.25, 1.5, 2, 3].map((speed) => (
-                      <button key={speed} className={cn("w-full px-3 py-1.5 text-left text-sm hover:bg-white/20 transition-colors", playbackSpeed === speed ? "text-blue-400 font-semibold" : "text-white")} onClick={() => setSpeed(speed)}>
-                        {speed}x
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PlayerSettingsMenu
+                showControls={showControls}
+                showSpeedMenu={showSpeedMenu}
+                playbackSpeed={playbackSpeed}
+                onToggleMenu={() => { showControlsNow(); setShowSpeedMenu(!showSpeedMenu); }}
+                onSetSpeed={setSpeed}
+              />
 
               {/* Rotate button (above mask) */}
               <button
