@@ -21,13 +21,20 @@ const SUPABASE_ANON_KEY =
   process.env.SUPABASE_ANON_KEY ??
   "";
 
-const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const configured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-let online = true;
+// Lazily built: createClient("") throws, so an unconfigured env must not
+// construct a client at module load — the suite self-skips instead.
+const anon = configured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : (null as unknown as ReturnType<typeof createClient>);
+
+let online = configured;
 
 beforeAll(async () => {
+  if (!configured) return;
   try {
     const r = await fetch(`${SUPABASE_URL}/auth/v1/health`, { method: "GET" });
     online = r.ok || r.status < 500;
@@ -46,7 +53,7 @@ function isPermissionDenied(err: unknown): boolean {
   );
 }
 
-describe("definer function access grants", () => {
+(configured ? describe : describe.skip)("definer function access grants", () => {
   // Both of these are intentionally NOT anon-callable any more:
   // stats go through the `platform-stats` edge function, and lecture search
   // requires an authenticated session (the function raises 42501 for anon).

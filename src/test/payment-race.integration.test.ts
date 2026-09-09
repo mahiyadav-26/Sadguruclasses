@@ -21,7 +21,11 @@ const SERVICE = process.env.TEST_SERVICE_ROLE_KEY;
 const RACE_USER = process.env.TEST_RACE_USER_ID;
 const COURSE_ID = Number(process.env.TEST_PAID_COURSE_ID ?? 0);
 
-describe("complete_paid_enrollment — exposure", () => {
+// Without a Supabase URL/key (local dev, forks without secrets) createClient
+// throws at collection time and paints CI red for a missing env var, not a bug.
+const exposureIf = URL && ANON ? describe : describe.skip;
+
+exposureIf("complete_paid_enrollment — exposure", () => {
   it("is NOT callable with the anon/publishable key", async () => {
     const anon = createClient(URL, ANON);
     const { error } = await anon.rpc("complete_paid_enrollment" as never, {
