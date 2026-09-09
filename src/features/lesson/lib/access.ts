@@ -18,7 +18,7 @@ export const COMMENT_IMAGE_TOO_LARGE = "Image must be under 5MB";
 
 export function checkCommentImage(
   file: { size: number },
-): { ok: true } | { ok: false; error: string } {
+): { ok: true; error?: never } | { ok: false; error: string } {
   if (file.size > MAX_COMMENT_IMAGE_BYTES) {
     return { ok: false, error: COMMENT_IMAGE_TOO_LARGE };
   }
