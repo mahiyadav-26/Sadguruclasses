@@ -13,10 +13,12 @@ const EMAIL = process.env.TEST_USER_EMAIL;
 const PASS = process.env.TEST_USER_PASSWORD;
 const PAID_COURSE_ID = Number(process.env.TEST_PAID_COURSE_ID ?? 0);
 
-const runIf = EMAIL && PASS && PAID_COURSE_ID > 0 ? describe : describe.skip;
+const runIf = URL && ANON && EMAIL && PASS && PAID_COURSE_ID > 0 ? describe : describe.skip;
 
 runIf("enrollment bypass — red team", () => {
-  const supabase = createClient(URL, ANON);
+  // describe.skip still evaluates this body, so guard the client construction.
+  const supabase =
+    URL && ANON ? createClient(URL, ANON) : (null as unknown as ReturnType<typeof createClient>);
 
   beforeAll(async () => {
     const { error } = await supabase.auth.signInWithPassword({ email: EMAIL!, password: PASS! });
