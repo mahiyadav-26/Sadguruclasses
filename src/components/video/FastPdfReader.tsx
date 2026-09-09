@@ -968,7 +968,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     if (resolveError) {
       pdfLogError("resolve-error", resolveError, { url });
       return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-100 p-8 text-center text-sm dark:bg-neutral-900">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-8 text-center text-sm">
           <p className="text-destructive">{friendlyPdfErrorMessage(new Error(resolveError), url)}</p>
           <div className="flex items-center gap-4">
             <button
@@ -992,7 +992,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
 
     if (src && isKnownNonPdfWebUrl(src)) {
       return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-100 p-8 text-center text-sm dark:bg-neutral-900">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-8 text-center text-sm">
           <p className="text-foreground">This attachment is a web page, not a PDF.</p>
           <button
             type="button"
@@ -1007,7 +1007,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
 
     if (error) {
       return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-100 p-8 text-center text-sm dark:bg-neutral-900">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-8 text-center text-sm">
           <p className="max-w-sm text-destructive">{error}</p>
           <div className="flex items-center gap-4">
             <button
@@ -1040,7 +1040,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     // which is exactly what users were seeing on APK for missing offline files.
     if (!file) {
       return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-100 p-8 text-center text-sm dark:bg-neutral-900">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-8 text-center text-sm">
           <p className="text-destructive">Offline copy missing for this file.</p>
           <p className="text-muted-foreground">
             Connect to the internet and re-download it to view again.
@@ -1053,7 +1053,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       <div
         ref={scrollRef}
         data-archive-virtualized={isArchiveSource(src) ? "true" : undefined}
-        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-neutral-100 [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto dark:bg-neutral-900"
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-background [&_.react-pdf__Document]:w-full [&_.react-pdf__Page]:!mx-auto [&_.react-pdf__Page]:!w-full [&_.react-pdf__Page]:!max-w-full [&_.react-pdf__Page__canvas]:!h-auto [&_.react-pdf__Page__canvas]:!w-full [&_.react-pdf__Page__canvas]:!max-w-full [&_.react-pdf__Page__canvas]:!block [&_.react-pdf__Page]:!mb-0 [&_.react-pdf__Page]:!bg-white [&_.annotationLayer_section]:!pointer-events-auto"
         onClick={onSurfaceTap}
         style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x pan-y pinch-zoom" }}
       >
