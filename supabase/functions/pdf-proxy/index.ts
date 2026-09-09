@@ -109,12 +109,22 @@ async function authorizeDrive(userId: string, driveId: string): Promise<boolean>
     .from("materials").select("course_id").ilike("file_url", like);
   mt?.forEach((r) => { if (r.course_id != null) courseIds.add(r.course_id as number); });
 
+  // PDF-type lessons keep their Drive link in `video_url` (the admin upload form
+  // writes one URL column for every lecture type), so matching only
+  // `class_pdf_url` made every enrolled student get 403 "Not authorized for this
+  // file" on Drive PDFs while staff (role bypass) saw them fine.
   const { data: lc } = await adminClient
-    .from("lessons").select("course_id, is_free, is_preview").ilike("class_pdf_url", like);
+    .from("lessons").select("course_id, is_free, is_preview")
+    .or(`class_pdf_url.ilike.${like},video_url.ilike.${like}`);
   for (const r of lc ?? []) {
     if (r.is_free || r.is_preview) return true;
     if (r.course_id != null) courseIds.add(r.course_id as number);
   }
+
+  // Attachment chips (lesson_attachments) resolve through their lesson.
+  const { data: la } = await adminClient
+    .from("lesson_attachments").select("lesson_id").ilike("file_url", like);
+  la?.forEach((r) => { if (r.lesson_id) lessonIds.add(r.lesson_id as string); });
 
   if (lessonIds.size > 0) {
     const { data: ls } = await adminClient
