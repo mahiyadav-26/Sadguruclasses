@@ -101,6 +101,10 @@ jobs:
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_PAID_COURSE_ID: ${{ secrets.TEST_PAID_COURSE_ID }}
+          # Learning-journey legs; unset => those legs skip cleanly (never red).
+          E2E_COURSE_ID: ${{ secrets.E2E_COURSE_ID }}
+          E2E_PAID_COURSE_ID: ${{ secrets.E2E_PAID_COURSE_ID || secrets.TEST_PAID_COURSE_ID }}
+          E2E_QUIZ_ID: ${{ secrets.E2E_QUIZ_ID }}
         # Soft-fail: don't block downstream jobs on flaky E2E runs. The HTML
         # report + traces are always uploaded below; check the artifact for
         # actual failures. Convert to hard-fail by removing `|| true` once
