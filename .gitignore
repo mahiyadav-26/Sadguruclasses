@@ -30,3 +30,12 @@ dist-ssr
 # for the in-app PDF viewer to render external PDFs.
 !public/pdfjs/build/
 !public/pdfjs/build/**
+
+# Scratch dumps / one-off scrapers — do not commit again (see PR: repo cleanup)
+/*.txt
+!requirements.txt
+/channel.html
+/about.html
+/videos.html
+/*_parser.py
+/parser.py

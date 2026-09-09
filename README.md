@@ -1,4 +1,39 @@
-# Safar English Kaa
+# Sadguru Classes
+
+E-learning platform for Sadguru Coaching Classes: courses, lessons, video + PDF
+readers, quizzes, doubts, AI chatbot, payments/subscriptions, and an Android
+app built with Capacitor.
+
+**Stack:** React + TypeScript + Vite + Tailwind/shadcn, Supabase (Postgres,
+Auth, Storage, Edge Functions), Capacitor for Android, Playwright + Maestro +
+Vitest for tests.
+
+## Quick start
+
+```bash
+bun install
+bun run dev
+```
+
+## Documentation index
+
+| Doc | What's inside |
+| --- | --- |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Deploying the web app, env vars, hosting targets, post-deploy checklist |
+| [`CAPACITOR.md`](CAPACITOR.md) | Native Android build, debugging, release APK, plus the Capacitor audit |
+| [`APK_BUILD_GUIDE.md`](APK_BUILD_GUIDE.md) | Step-by-step signed APK build |
+| [`DEBUGGING.md`](DEBUGGING.md) | Troubleshooting playbook |
+| [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) | Feature-by-feature status |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release history |
+
+## Package managers
+
+`bun.lock` drives installs and CI builds. `package-lock.json` is kept
+deliberately so the `dependency-audit` workflow can run `npm audit`; keep both
+in sync via `bun run fix:lockfile`.
+
+---
+
 Education Platform
 
 ## Environment Flags
