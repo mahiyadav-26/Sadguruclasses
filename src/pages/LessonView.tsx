@@ -41,6 +41,7 @@ import { Textarea } from "../components/ui/textarea";
 import PdfViewer from "../components/video/LazyPdfViewer";
 import { lazyWithRetry } from "../lib/lazyWithRetry";
 import type { Lesson, Chapter } from "../features/lesson/types";
+import { canAccessLesson as canAccessLessonRule, checkCommentImage, normalizeLessons } from "../features/lesson/lib/access";
 import {
   SARTHI_SUGGESTIONS,
   formatChatTs,
@@ -1370,13 +1371,7 @@ const LessonView = () => {
         setCourse(b.course);
         setChapters(b.chapters || []);
 
-        const mappedLessons: Lesson[] = (b.lessons || []).map((l: any) => ({
-          ...l,
-          video_url: l.video_url || '',
-          class_pdf_url: l.class_pdf_url || null,
-          overview: l.overview || null,
-          lecture_type: l.lecture_type || null,
-        }));
+        const mappedLessons: Lesson[] = normalizeLessons(b.lessons);
 
         setLessons(mappedLessons);
 
@@ -1466,9 +1461,7 @@ const LessonView = () => {
   }, [currentLesson?.id, fetchComments]);
 
   // --- Logic ---
-  const canAccessLesson = (lesson: Lesson) => {
-    return !lesson.is_locked || hasPurchased;
-  };
+  const canAccessLesson = (lesson: Lesson) => canAccessLessonRule(lesson, hasPurchased);
 
   const handleLessonClick = async (lesson: Lesson) => {
     if (!canAccessLesson(lesson)) {
@@ -1562,8 +1555,9 @@ const LessonView = () => {
   const handleCommentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be under 5MB");
+    const imgCheck = checkCommentImage(file);
+    if (!imgCheck.ok) {
+      toast.error(imgCheck.error);
       return;
     }
     setCommentImage(file);
