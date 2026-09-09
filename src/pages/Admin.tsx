@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { reportError } from "@/lib/sentry";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { openResource } from "@/lib/openResource";
@@ -33,17 +34,28 @@ import {
   FileText, Link as LinkIcon, LayoutDashboard,
 } from "lucide-react";
 
-import ContentDrillDown from "../components/admin/ContentDrillDown";
-import SocialLinksManager from "../components/admin/SocialLinksManager";
-import PlayerReaderControlsManager from "../components/admin/PlayerReaderControls";
-import HeroBannerManager from "../components/admin/HeroBannerManager";
+// Admin tab panels are route-heavy leaves that only one operator tab shows at a
+// time. Loading them lazily keeps the /admin entry chunk small; lazyWithRetry
+// survives stale chunk hashes after a deploy. Each panel already mounts only
+// when its tab is active, so the extra chunk fetch happens on the tab click.
+const ContentDrillDown = lazyWithRetry(() => import("../components/admin/ContentDrillDown"));
+const SocialLinksManager = lazyWithRetry(() => import("../components/admin/SocialLinksManager"));
+const PlayerReaderControlsManager = lazyWithRetry(() => import("../components/admin/PlayerReaderControls"));
+const HeroBannerManager = lazyWithRetry(() => import("../components/admin/HeroBannerManager"));
+const LandingCoursesManager = lazyWithRetry(() => import("../components/admin/LandingCoursesManager"));
+const TestimonialsManager = lazyWithRetry(() => import("../components/admin/TestimonialsManager"));
+const SyllabusManager = lazyWithRetry(() => import("../components/admin/SyllabusManager"));
+const TimetableManager = lazyWithRetry(() => import("../components/admin/TimetableManager"));
+const EnrollmentManager = lazyWithRetry(() => import("../components/admin/EnrollmentManager"));
+const LibraryManager = lazyWithRetry(() => import("../components/admin/LibraryManager"));
 
-import LandingCoursesManager from "../components/admin/LandingCoursesManager";
-import TestimonialsManager from "../components/admin/TestimonialsManager";
-import SyllabusManager from "../components/admin/SyllabusManager";
-import TimetableManager from "../components/admin/TimetableManager";
-import EnrollmentManager from "../components/admin/EnrollmentManager";
-import LibraryManager from "../components/admin/LibraryManager";
+// One shared fallback for every lazy panel: matches the card rhythm of the
+// tabs so switching tabs doesn't jump the layout.
+const PanelFallback = () => (
+  <div className="flex items-center justify-center py-16 text-muted-foreground">
+    <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+  </div>
+);
 
 interface UserWithRole {
   id: string;
@@ -1197,13 +1209,15 @@ const Admin = () => {
           </>)}</TabsContent>
 
           {/* CONTENT TAB — uses ContentDrillDown with built-in upload */}
-          <TabsContent value="content">
-            <ContentDrillDown
-              coursesList={coursesList}
-              onNavigateToUpload={(courseId, chapterId) => navigate(`/admin/upload?course=${courseId}&chapter=${chapterId || ''}`)}
-              onRefresh={fetchDashboardData}
-            />
-          </TabsContent>
+          <TabsContent value="content">{activeTab === 'content' && (
+            <Suspense fallback={<PanelFallback />}>
+              <ContentDrillDown
+                coursesList={coursesList}
+                onNavigateToUpload={(courseId, chapterId) => navigate(`/admin/upload?course=${courseId}&chapter=${chapterId || ''}`)}
+                onRefresh={fetchDashboardData}
+              />
+            </Suspense>
+          )}</TabsContent>
 
           {/* SCHEDULE TAB */}
           <TabsContent value="schedule">
@@ -1247,14 +1261,16 @@ const Admin = () => {
               on LibraryManager then prevents re-renders from sibling tab
               activity (coursesList is the only prop, and it's stable). */}
           <TabsContent value="library">
-            {activeTab === 'library' && <LibraryManager coursesList={coursesList} />}
+            {activeTab === 'library' && (
+              <Suspense fallback={<PanelFallback />}><LibraryManager coursesList={coursesList} /></Suspense>
+            )}
           </TabsContent>
 
            {/* PLAYER & READER TAB */}
-           <TabsContent value="player-reader">{activeTab === 'player-reader' && <PlayerReaderControlsManager />}</TabsContent>
+           <TabsContent value="player-reader">{activeTab === 'player-reader' && <Suspense fallback={<PanelFallback />}><PlayerReaderControlsManager /></Suspense>}</TabsContent>
 
            {/* SOCIAL TAB */}
-           <TabsContent value="social"><SocialLinksManager /></TabsContent>
+           <TabsContent value="social">{activeTab === 'social' && <Suspense fallback={<PanelFallback />}><SocialLinksManager /></Suspense>}</TabsContent>
 
 
           {/* LIVE TAB */}
@@ -1272,9 +1288,9 @@ const Admin = () => {
           </TabsContent>
 
           {/* BANNERS TAB */}
-          <TabsContent value="banners"><HeroBannerManager /></TabsContent>
-          <TabsContent value="landing-courses">{activeTab === 'landing-courses' && <LandingCoursesManager />}</TabsContent>
-          <TabsContent value="testimonials">{activeTab === 'testimonials' && <TestimonialsManager />}</TabsContent>
+          <TabsContent value="banners">{activeTab === 'banners' && <Suspense fallback={<PanelFallback />}><HeroBannerManager /></Suspense>}</TabsContent>
+          <TabsContent value="landing-courses">{activeTab === 'landing-courses' && <Suspense fallback={<PanelFallback />}><LandingCoursesManager /></Suspense>}</TabsContent>
+          <TabsContent value="testimonials">{activeTab === 'testimonials' && <Suspense fallback={<PanelFallback />}><TestimonialsManager /></Suspense>}</TabsContent>
 
           {/* DOUBTS TAB */}
           <TabsContent value="doubts">
@@ -1341,19 +1357,21 @@ const Admin = () => {
           </>)}</TabsContent>
 
           {/* ENROLLMENTS TAB - Manual Course Access */}
-          <TabsContent value="enrollments">
-            <EnrollmentManager coursesList={coursesList} usersList={usersList} />
-          </TabsContent>
+          <TabsContent value="enrollments">{activeTab === 'enrollments' && (
+            <Suspense fallback={<PanelFallback />}>
+              <EnrollmentManager coursesList={coursesList} usersList={usersList} />
+            </Suspense>
+          )}</TabsContent>
 
           {/* SYLLABUS TAB */}
-          <TabsContent value="syllabus">
-            <SyllabusManager />
-          </TabsContent>
+          <TabsContent value="syllabus">{activeTab === 'syllabus' && (
+            <Suspense fallback={<PanelFallback />}><SyllabusManager /></Suspense>
+          )}</TabsContent>
 
           {/* TIMETABLE TAB */}
-          <TabsContent value="timetable">
-            <TimetableManager />
-          </TabsContent>
+          <TabsContent value="timetable">{activeTab === 'timetable' && (
+            <Suspense fallback={<PanelFallback />}><TimetableManager /></Suspense>
+          )}</TabsContent>
 
         </Tabs>
       </main>
