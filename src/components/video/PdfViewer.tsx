@@ -217,8 +217,8 @@ const PdfViewerInner = forwardRef<PdfViewerHandle, PdfViewerProps>(
         <div
           className={
             chromeVisible
-              ? "relative w-full overflow-hidden bg-card"
-              : "absolute inset-0 w-full h-full overflow-hidden bg-card"
+              ? "relative w-full overflow-hidden bg-background"
+              : "absolute inset-0 w-full h-full overflow-hidden bg-background"
           }
           style={
             chromeVisible
@@ -237,8 +237,8 @@ const PdfViewerInner = forwardRef<PdfViewerHandle, PdfViewerProps>(
         <div
           className={
             chromeVisible
-              ? "relative w-full overflow-hidden bg-card"
-              : "absolute inset-0 w-full h-full overflow-hidden bg-card"
+              ? "relative w-full overflow-hidden bg-background"
+              : "absolute inset-0 w-full h-full overflow-hidden bg-background"
           }
           style={
             chromeVisible
@@ -258,8 +258,8 @@ const PdfViewerInner = forwardRef<PdfViewerHandle, PdfViewerProps>(
         <div
           className={
             chromeVisible
-              ? "relative w-full overflow-hidden bg-card landscape:!h-[calc(100dvh-var(--nb-player-h,56.25vw)-env(safe-area-inset-top)-env(safe-area-inset-bottom))] landscape:!min-h-[200px]"
-              : "absolute inset-0 w-full h-full overflow-hidden bg-card"
+              ? "relative w-full overflow-hidden bg-background landscape:!h-[calc(100dvh-var(--nb-player-h,56.25vw)-env(safe-area-inset-top)-env(safe-area-inset-bottom))] landscape:!min-h-[200px]"
+              : "absolute inset-0 w-full h-full overflow-hidden bg-background"
           }
           style={
             chromeVisible
@@ -292,8 +292,8 @@ const PdfViewerInner = forwardRef<PdfViewerHandle, PdfViewerProps>(
     const TOOLBAR_HIDE_PX = isHtmlViewer ? 56 : 0;
 
     const wrapperClass = chromeVisible
-      ? "relative w-full overflow-hidden bg-card landscape:!h-[calc(100dvh-var(--nb-player-h,56.25vw)-env(safe-area-inset-top)-env(safe-area-inset-bottom))] landscape:!min-h-[200px]"
-      : "absolute inset-0 w-full h-full overflow-hidden bg-card";
+      ? "relative w-full overflow-hidden bg-background landscape:!h-[calc(100dvh-var(--nb-player-h,56.25vw)-env(safe-area-inset-top)-env(safe-area-inset-bottom))] landscape:!min-h-[200px]"
+      : "absolute inset-0 w-full h-full overflow-hidden bg-background";
 
     const wrapperStyle: React.CSSProperties = chromeVisible
       ? {
