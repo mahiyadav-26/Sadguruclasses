@@ -20,6 +20,7 @@ const nbBirdLogo = birdLogo;
 
 import { cn } from "../../lib/utils";
 import { extractYoutubeId } from "../../lib/videoUtils";
+import { formatTime as formatPlayerTime, isLiveStreamUrl, buildYoutubeEmbedUrl, pointerRatio, percentOf } from "./lib/playerGeometry";
 import { safeGet, safeSet } from "../../lib/storage";
 import { lockOrientation, unlockOrientation, isNativeOrientationAvailable } from "../../lib/screenOrientation";
 import { enterImmersive, exitImmersive } from "../../lib/androidImmersive";
@@ -813,22 +814,7 @@ const MahimaGhostPlayer = memo(({
   const calculatePointer = useCallback((clientX: number, clientY: number) => {
     if (!progressBarRef.current || duration <= 0) return { ratio: 0, localX: 0 };
     const rect = progressBarRef.current.getBoundingClientRect();
-    const r = ((rotationRef.current % 360) + 360) % 360;
-    let ratio = 0;
-    let localLen = rect.width;
-    if (r === 90) {
-      ratio = (clientY - rect.top) / rect.height;
-      localLen = rect.height;
-    } else if (r === 270) {
-      ratio = (rect.bottom - clientY) / rect.height;
-      localLen = rect.height;
-    } else if (r === 180) {
-      ratio = (rect.right - clientX) / rect.width;
-    } else {
-      ratio = (clientX - rect.left) / rect.width;
-    }
-    ratio = Math.max(0, Math.min(1, ratio));
-    return { ratio, localX: ratio * localLen };
+    return pointerRatio(rect, clientX, clientY, rotationRef.current);
   }, [duration]);
 
   const calculateTimeFromPosition = useCallback((clientX: number, clientY: number = 0) => {
@@ -892,29 +878,14 @@ const MahimaGhostPlayer = memo(({
 
   const handleProgressLeave = useCallback(() => setHoverTime(null), []);
 
-  const formatTime = useCallback((seconds: number) => {
-    if (!seconds || isNaN(seconds) || !isFinite(seconds)) return "0:00";
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }, []);
+  const formatTime = formatPlayerTime;
 
 
   // formatRelativeTime removed — use formatRelativeTime from src/lib/utils.ts if needed
 
-  const isLiveStream = /\/live\//.test(videoUrl || '');
+  const isLiveStream = isLiveStreamUrl(videoUrl);
   const embedUrl = youtubeId
-    ? `https://www.youtube-nocookie.com/embed/${youtubeId}?` + new URLSearchParams({
-        controls: '0', modestbranding: '1', rel: '0', showinfo: '0',
-        iv_load_policy: '3', disablekb: '1', fs: '0', cc_load_policy: '0',
-        playsinline: '1', autoplay: '1', mute: '1', enablejsapi: '1',
-        origin: window.location.origin, widget_referrer: window.location.origin, start: '0',
-        annotation: '0', autohide: '1',
-        host: window.location.origin,
-        ...(isLiveStream ? { live: '1' } : {}),
-      }).toString()
+    ? buildYoutubeEmbedUrl(youtubeId, { origin: window.location.origin, isLive: isLiveStream })
     : null;
 
   if (!youtubeId) {
@@ -926,8 +897,8 @@ const MahimaGhostPlayer = memo(({
   }
 
 
-  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const bufferedPercentage = duration > 0 ? (bufferedTime / duration) * 100 : 0;
+  const progressPercentage = percentOf(currentTime, duration);
+  const bufferedPercentage = percentOf(bufferedTime, duration);
 
   // Rotation styles. On Capacitor (Android/iOS) we rely on native OS rotation,
   // so the player just goes fixed-inset fullscreen — NO css `transform: rotate`
