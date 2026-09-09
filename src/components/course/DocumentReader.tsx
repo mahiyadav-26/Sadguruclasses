@@ -9,6 +9,7 @@ import ReaderProgress from "./ReaderProgress";
 import ReaderErrorOverlay from "./ReaderErrorOverlay";
 
 import { usePdfResumePosition } from "../../hooks/usePdfResumePosition";
+import { useReaderImmersive } from "../../hooks/useReaderImmersive";
 
 import { useDownloads } from "../../hooks/useDownloads";
 import { isDocSaved, toggleDoc } from "../../lib/docLibrary";
@@ -48,8 +49,13 @@ const ARCHIVE_ERROR_TIMEOUT_MS = 90000;
  */
 const DocumentReader = memo(
   ({ title, subtitle, badge, url, onBack, lessonId }: DocumentReaderProps) => {
-    const [chromeVisible, setChromeVisible] = useState(true);
+  const [chromeVisible, setChromeVisible] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Hide the Android/Capacitor status bar whenever the reader is open.
+    // When the user toggles cinema (chrome-less) mode, also hide the nav bar.
+    useReaderImmersive(true, isFullscreen);
+
     const [showSkeleton, setShowSkeleton] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [retryNonce, setRetryNonce] = useState(0);

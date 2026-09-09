@@ -194,8 +194,10 @@ const Admin = () => {
       const { count: enrollCount } = await supabase.from('enrollments').select('*', { count: 'exact', head: true });
       const { count: pendingCount } = await supabase.from('payment_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
 
-      const { data: approvedPayments } = await supabase.from('payment_requests').select('amount').eq('status', 'approved');
-      const { data: completedRzp } = await supabase.from('razorpay_payments').select('amount').eq('status', 'completed');
+      // Supabase status values may be capitalised (e.g. 'Approved', 'Completed')
+      // depending on how the row was inserted, so match case-insensitively.
+      const { data: approvedPayments } = await supabase.from('payment_requests').select('amount').ilike('status', 'approved');
+      const { data: completedRzp } = await supabase.from('razorpay_payments').select('amount').ilike('status', 'completed');
       const manualRevenue = approvedPayments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
       const rzpRevenue = completedRzp?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
@@ -261,7 +263,7 @@ const Admin = () => {
     return allPaymentsUnified.filter(p => {
       const matchesSearch = !s || p._displayName.toLowerCase().includes(s) || p._email.toLowerCase().includes(s) ||
         p._course.toLowerCase().includes(s) || (p.transaction_id?.toLowerCase().includes(s)) || (p.razorpay_payment_id?.toLowerCase().includes(s));
-      const matchesStatus = paymentStatusFilter === "all" || p._status === paymentStatusFilter;
+      const matchesStatus = paymentStatusFilter === "all" || p._status?.toLowerCase() === paymentStatusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [allPaymentsUnified, paymentSearch, paymentStatusFilter]);
@@ -569,7 +571,7 @@ const Admin = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'approved': return <Badge className="bg-green-100 text-green-700 border-green-200">Approved</Badge>;
       case 'completed': return <Badge className="bg-green-100 text-green-700 border-green-200">Completed</Badge>;
       case 'rejected': return <Badge className="bg-red-100 text-red-700 border-red-200">Rejected</Badge>;
@@ -744,8 +746,8 @@ const Admin = () => {
               const now = new Date();
               const todayStr = now.toISOString().split('T')[0];
               const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-              const completedRzp = razorpayPayments.filter(p => p.status === 'completed');
-              const approvedManual = payments.filter(p => p.status === 'approved');
+              const completedRzp = razorpayPayments.filter(p => p.status?.toLowerCase() === 'completed');
+              const approvedManual = payments.filter(p => p.status?.toLowerCase() === 'approved');
               const todayRzp = completedRzp.filter(p => p.created_at?.startsWith(todayStr)).reduce((s: number, p: any) => s + (p.amount || 0), 0);
               const todayManual = approvedManual.filter(p => p.created_at?.startsWith(todayStr)).reduce((s: number, p: any) => s + (p.amount || 0), 0);
               const monthRzp = completedRzp.filter(p => p.created_at >= monthStart).reduce((s: number, p: any) => s + (p.amount || 0), 0);
