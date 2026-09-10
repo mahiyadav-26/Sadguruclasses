@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { mark, measure } from "@/lib/perf/marks";
 import { safeGet, safeSet } from "@/lib/storage";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +20,7 @@ import {
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import appLogo from "../assets/branding/nb-mark.webp";
 import BatchSelector from "../components/dashboard/BatchSelector";
+import { useBatch } from "../contexts/BatchContext";
 import HeroCarousel from "../components/dashboard/HeroCarousel";
 import UpcomingSchedule from "../components/dashboard/UpcomingSchedule";
 import LiveBadge from "../components/live/LiveBadge";
@@ -110,12 +111,26 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, role, isAuthenticated, isLoading: authLoading } = useAuth();
   const isOnline = useOnlineStatus();
+  const { selectedBatch } = useBatch();
 
   const [myCourses, setMyCourses] = useState<any[]>([]);
   const [progressPercent, setProgressPercent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [quizAttempts, setQuizAttempts] = useState<QuizAttemptRow[]>([]);
   const [upcomingDoubts, setUpcomingDoubts] = useState<{ id: string; subject: string | null; scheduled_at: string | null; zoom_join_url: string | null; status: string }[]>([]);
+  // The dashboard "Continue where you left" card follows the course picked in
+  // the BatchSelector, so switching course also swaps the thumbnail, title,
+  // description and progress. Falls back to the first enrolled course.
+  const activeCourse = useMemo(() => {
+    if (myCourses.length === 0) return null;
+    const match = selectedBatch
+      ? myCourses.find((c) => String(c.id) === String(selectedBatch.id))
+      : undefined;
+    return match ?? myCourses[0];
+  }, [myCourses, selectedBatch]);
+
+  const activeProgress = activeCourse?.progressPercent ?? progressPercent;
+
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(() => {
     const dismissed = safeGet('install-banner-dismissed') === 'true';
     const nav = window.navigator as Navigator & { standalone?: boolean };
@@ -324,16 +339,16 @@ const Dashboard = () => {
           <LiveBadge />
             <UpcomingLiveSessions />
             <UpcomingSchedule />
-            {myCourses.length > 0 ? (
+            {activeCourse ? (
               <Card
                 className="overflow-hidden shadow-sm cursor-pointer group hover:shadow-md transition-shadow"
-                onClick={() => navigate(`/my-courses/${myCourses[0].id}`)}
+                onClick={() => navigate(`/my-courses/${activeCourse.id}`)}
               >
                 <div className="flex flex-col sm:flex-row">
                   <div className="sm:w-48 h-36 sm:h-auto bg-muted relative overflow-hidden flex-shrink-0">
                     <SmartImage 
-                      src={myCourses[0].thumbnailUrl || myCourses[0].imageUrl || "/placeholder.svg"} 
-                      alt={myCourses[0].title}
+                      src={activeCourse.thumbnailUrl || activeCourse.imageUrl || selectedBatch?.image_url || "/placeholder.svg"} 
+                      alt={activeCourse.title}
                       width={600}
                       height={320}
                       fallbackSrc={coursePlaceholder}
@@ -346,20 +361,20 @@ const Dashboard = () => {
                   <div className="p-4 flex-1 flex flex-col justify-center gap-2">
                     <div className="flex items-center justify-between">
                       <Badge variant="secondary" className="text-xs">
-                        {formatGrade(myCourses[0].grade) || "General"}
+                        {formatGrade(activeCourse.grade) || "General"}
                       </Badge>
                       <span className="text-xs text-muted-foreground">Continue where you left</span>
                     </div>
-                    <h3 className="text-lg font-bold text-foreground line-clamp-1">{myCourses[0].title}</h3>
+                    <h3 className="text-lg font-bold text-foreground line-clamp-1">{activeCourse.title}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-1">
-                      {myCourses[0].description || "Keep pushing your limits!"}
+                      {activeCourse.description || "Keep pushing your limits!"}
                     </p>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs font-medium text-muted-foreground">
                         <span>Progress</span>
-                        <span>{progressPercent}%</span>
+                        <span>{activeProgress}%</span>
                       </div>
-                      <Progress value={progressPercent} className="h-2" />
+                      <Progress value={activeProgress} className="h-2" />
                     </div>
                     <Button size="sm" className="mt-1 w-fit bg-accent text-accent-foreground hover:bg-accent/90">
                       <Zap className="h-4 w-4 mr-1" /> Resume
