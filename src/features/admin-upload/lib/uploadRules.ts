@@ -88,3 +88,61 @@ export function storageUri(bucket: string, path: string): string {
 export function nextPosition(explicit: number | undefined | null, currentCount: number): number {
   return explicit || currentCount + 1;
 }
+
+// ── Upload type presentation rules ───────────────────────────────────────────
+// Moved out of AdminUpload.tsx so the label/colour/icon mapping is testable.
+
+export type UploadTypeId = "VIDEO" | "LIVE" | "PDF" | "DPP" | "DPP_ATTEMPT" | "NOTES" | "TEST";
+
+export const UPLOAD_TYPES: UploadTypeId[] = [
+  "VIDEO", "LIVE", "PDF", "DPP", "DPP_ATTEMPT", "NOTES", "TEST",
+];
+
+const UPLOAD_TYPE_LABELS: Record<UploadTypeId, string> = {
+  VIDEO: "Lecture",
+  LIVE: "Live Class",
+  PDF: "PDF",
+  DPP: "DPP",
+  DPP_ATTEMPT: "DPP Attempt",
+  NOTES: "Notes",
+  TEST: "Test",
+};
+
+export function uploadTypeLabel(type: string): string {
+  return UPLOAD_TYPE_LABELS[type as UploadTypeId] ?? type;
+}
+
+/** Which icon a type renders: video camera, clipboard, or document. */
+export function uploadTypeIcon(type: string): "video" | "test" | "document" {
+  if (type === "VIDEO" || type === "LIVE") return "video";
+  if (type === "TEST") return "test";
+  return "document";
+}
+
+export function uploadTypeColor(type: string): string {
+  switch (type) {
+    case "VIDEO": return "bg-blue-100 text-blue-600";
+    case "LIVE": return "bg-red-100 text-red-600";
+    case "PDF": return "bg-orange-100 text-orange-600";
+    case "DPP": return "bg-green-100 text-green-600";
+    case "DPP_ATTEMPT": return "bg-emerald-100 text-emerald-700";
+    case "NOTES": return "bg-purple-100 text-purple-600";
+    case "TEST": return "bg-red-100 text-red-600";
+    default: return "bg-muted text-muted-foreground";
+  }
+}
+
+export interface BreadcrumbSegment { label: string; clickable: boolean }
+
+/** Upload Center > Course > Chapter, with only ancestors clickable. */
+export function buildUploadBreadcrumb(
+  courseTitle?: string | null,
+  chapterTitle?: string | null,
+): BreadcrumbSegment[] {
+  const segments: BreadcrumbSegment[] = [
+    { label: "Upload Center", clickable: !!courseTitle },
+  ];
+  if (courseTitle) segments.push({ label: courseTitle, clickable: !!chapterTitle });
+  if (chapterTitle) segments.push({ label: chapterTitle, clickable: false });
+  return segments;
+}

@@ -44,6 +44,9 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { UploadTypeTabs } from "@/features/admin-upload/components/UploadTypeTabs";
+import { UploadBreadcrumb } from "@/features/admin-upload/components/UploadBreadcrumb";
+import { uploadTypeIcon, uploadTypeColor } from "@/features/admin-upload/lib/uploadRules";
 import { cn } from "../lib/utils";
 import { nextPosition, randomObjectName, storageUri } from "../features/admin-upload/lib/uploadRules";
 import { useAdminUploadForm } from "../features/admin-upload/hooks/useAdminUploadForm";
@@ -606,21 +609,13 @@ const AdminUpload = () => {
   };
 
   const typeIcon = (type: string) => {
-    if (type === "VIDEO" || type === "LIVE") return <Video className="h-4 w-4" />;
-    if (type === "TEST") return <ClipboardCheck className="h-4 w-4" />;
+    const kind = uploadTypeIcon(type);
+    if (kind === "video") return <Video className="h-4 w-4" />;
+    if (kind === "test") return <ClipboardCheck className="h-4 w-4" />;
     return <FileText className="h-4 w-4" />;
   };
 
-  const typeColor = (type: string) => {
-    if (type === "VIDEO") return "bg-blue-100 text-blue-600";
-    if (type === "LIVE") return "bg-red-100 text-red-600";
-    if (type === "PDF") return "bg-orange-100 text-orange-600";
-    if (type === "DPP") return "bg-green-100 text-green-600";
-    if (type === "DPP_ATTEMPT") return "bg-emerald-100 text-emerald-700";
-    if (type === "NOTES") return "bg-purple-100 text-purple-600";
-    if (type === "TEST") return "bg-red-100 text-red-600";
-    return "bg-muted text-muted-foreground";
-  };
+  const typeColor = (type: string) => uploadTypeColor(type);
 
   if (isLoading) {
     return (
@@ -631,72 +626,20 @@ const AdminUpload = () => {
   }
 
   // ─── BREADCRUMB NAV ──────────────────────────────────────────────────────
-  const renderBreadcrumb = () => {
-    const segments: { label: string; onClick?: () => void }[] = [
-      { label: "Upload Center", onClick: selectedCourseId ? () => { setSelectedCourseId(null); setSelectedChapterId(null); } : undefined },
-    ];
-    if (selectedCourse) {
-      segments.push({
-        label: selectedCourse.title,
-        onClick: selectedChapterId ? () => setSelectedChapterId(null) : undefined,
-      });
-    }
-    if (selectedChapter) {
-      segments.push({ label: selectedChapter.title });
-    }
-
-    return (
-      <nav className="flex items-center gap-1 text-xs overflow-x-auto whitespace-nowrap py-2.5 px-4 mb-4 bg-gradient-to-r from-card/95 to-card/80 backdrop-blur-xl border-b border-border/40 shadow-[0_1px_3px_0_rgb(0_0_0/0.04)] rounded-xl" aria-label="Breadcrumb">
-        {segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1 shrink-0">
-            {i > 0 && <ChevronRight className="h-3 w-3 text-primary/30 mx-0.5 shrink-0" />}
-            {seg.onClick ? (
-              <button onClick={seg.onClick} className="px-2 py-1 rounded-lg text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-all duration-150 active:scale-95">
-                {seg.label}
-              </button>
-            ) : (
-              <span className="px-2 py-1 rounded-lg font-bold text-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.12)]">
-                {seg.label}
-              </span>
-            )}
-          </div>
-        ))}
-      </nav>
-    );
-  };
+  const renderBreadcrumb = () => (
+    <UploadBreadcrumb
+      courseTitle={selectedCourse?.title}
+      chapterTitle={selectedChapter?.title}
+      onGoToRoot={() => { setSelectedCourseId(null); setSelectedChapterId(null); }}
+      onGoToCourse={() => setSelectedChapterId(null)}
+    />
+  );
 
   // ─── UPLOAD FORM ─────────────────────────────────────────────────────────
   const renderUploadForm = () => (
     <div className="space-y-5">
       {/* Type tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        {(["VIDEO", "LIVE", "PDF", "DPP", "DPP_ATTEMPT", "NOTES", "TEST"] as UploadType[]).map(type => {
-          const labelMap: Record<UploadType, string> = {
-            VIDEO: "Lecture",
-            LIVE: "Live Class",
-            PDF: "PDF",
-            DPP: "DPP",
-            DPP_ATTEMPT: "DPP Attempt",
-            NOTES: "Notes",
-            TEST: "Test",
-          };
-          return (
-            <button
-              key={type}
-              onClick={() => setUploadType(type)}
-              className={cn(
-                "flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-medium transition-all whitespace-nowrap min-h-[44px]",
-                uploadType === type
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {typeIcon(type)}
-              {labelMap[type]}
-            </button>
-          );
-        })}
-      </div>
+      <UploadTypeTabs value={uploadType} onChange={setUploadType} />
 
       <div className="space-y-1.5">
         <Label>Title *</Label>
