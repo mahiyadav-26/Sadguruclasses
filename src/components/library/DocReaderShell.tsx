@@ -3,6 +3,7 @@ import { ArrowLeft, BookMarked, BookOpen, Download, Loader2, Maximize2, Minimize
 import RotatePhoneIcon from "../icons/RotatePhoneIcon";
 import { Button } from "../ui/button";
 import PdfViewer, { type PdfViewerHandle } from "../video/PdfViewer";
+import { useLessonFeatureFlag } from "@/hooks/useLessonFeatureFlags";
 import AutoScrollFab from "../viewer/AutoScrollFab";
 import NotesPanel from "./reader/NotesPanel";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
@@ -37,6 +38,7 @@ interface Props {
 export default function DocReaderShell({
   url, title, filename, onBack, hideDownload, onDownloaded, itemId, source = "other", onOpenLink,
 }: Props) {
+  const readerAutoScrollEnabled = useLessonFeatureFlag("readerAutoScroll");
   const [headerVisible, setHeaderVisible] = useState(true);
   const [saving, setSaving] = useState(false);
   const [downloadPercent, setDownloadPercent] = useState<number>(0);
@@ -357,6 +359,7 @@ export default function DocReaderShell({
         {/* AutoScroll FAB — auto-hides with chrome so the page is distraction-free
             while reading. Stays visible while autoscroll is active so the user
             can hold-to-pause or stop it. */}
+        {readerAutoScrollEnabled && (
         <AutoScrollFab
           targetRef={scrollElRef}
           iframeRef={iframeElRef}
@@ -368,6 +371,7 @@ export default function DocReaderShell({
             if (a) setHeaderVisible(false);
           }}
         />
+        )}
 
         {/* Rotate FAB — lightweight SVG only, no black pill background. */}
         <button

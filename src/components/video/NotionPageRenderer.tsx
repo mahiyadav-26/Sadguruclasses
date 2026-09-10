@@ -7,6 +7,7 @@ import { extractNotionPageId, notionPageProxyUrl } from "../../lib/pdfViewerUrl"
 import { savePdfToDevice } from "../../lib/nativePdfSaver";
 import { useToast } from "../../hooks/use-toast";
 import { traceReader } from "../../lib/readerDiagnostics";
+import { useLessonFeatureFlag } from "@/hooks/useLessonFeatureFlags";
 import AutoScrollFab from "../viewer/AutoScrollFab";
 
 
@@ -60,6 +61,7 @@ function textBlockCount(recordMap: any): number {
 
 export default function NotionPageRenderer({ url, title, onClose, onReady, onDocument }: Props) {
   const { toast } = useToast();
+  const readerAutoScrollEnabled = useLessonFeatureFlag("readerAutoScroll");
   const [exporting, setExporting] = useState(false);
   const [documents, setDocuments] = useState<{ id: string; name: string; url: string }[]>([]);
   const [bestDocument, setBestDocument] = useState<{ id: string; name: string; url: string } | null>(null);
@@ -386,12 +388,14 @@ export default function NotionPageRenderer({ url, title, onClose, onReady, onDoc
 
       {/* Autoscroll for long Notion notes — same rAF engine as the PDF reader,
           per-page speed memory, parked above the Download FAB. */}
-      <AutoScrollFab
-        key={`notion:${activeUrl}`}
-        targetRef={scrollRef}
-        bottomOffset={84}
-        docKey={`notion:${activeUrl}`}
-      />
+      {readerAutoScrollEnabled && (
+        <AutoScrollFab
+          key={`notion:${activeUrl}`}
+          targetRef={scrollRef}
+          bottomOffset={84}
+          docKey={`notion:${activeUrl}`}
+        />
+      )}
 
       <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Rendering…</div>}>
         <NotionRenderer
