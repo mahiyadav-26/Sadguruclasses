@@ -20,7 +20,7 @@ export default defineConfig({
         "src/components/ui/**",
       ],
       // Ratchet: raise these as coverage grows; never lower them.
-      thresholds: { lines: 6.5, functions: 5, branches: 5.5, statements: 6 },
+      thresholds: { lines: 6.7, functions: 5.6, branches: 6.2, statements: 6.3 },
     },
   },
   resolve: {
