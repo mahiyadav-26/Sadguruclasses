@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -84,4 +85,61 @@ export function useLessonFeatureFlags(): LessonFeatureFlags & { isLoading: boole
   });
 
   return { ...LESSON_FEATURE_DEFAULTS, ...(data || {}), isLoading };
+}
+
+/**
+ * Provider-free access to the same flags.
+ *
+ * Reader surfaces (library doc reader, PDF viewer, Notion notes) render outside
+ * the react-query tree in some contexts and in tests, so they cannot use
+ * `useLessonFeatureFlags`. This variant caches one fetch per session, defaults
+ * to ON and never throws — a failed read simply keeps the feature visible.
+ */
+let flagsCache: LessonFeatureFlags | null = null;
+let flagsInflight: Promise<LessonFeatureFlags> | null = null;
+
+export function fetchLessonFeatureFlags(): Promise<LessonFeatureFlags> {
+  if (flagsCache) return Promise.resolve(flagsCache);
+  if (!flagsInflight) {
+    flagsInflight = (async () => {
+      const { data: rows, error } = await supabase
+        .from("site_settings")
+        .select("key, value")
+        .in("key", Object.values(LESSON_FEATURE_KEYS));
+      if (error) throw error;
+      const parsed = parseLessonFeatureRows(rows || []);
+      flagsCache = parsed;
+      return parsed;
+    })().catch((err) => {
+      flagsInflight = null;
+      throw err;
+    });
+  }
+  return flagsInflight;
+}
+
+/** Test/admin helper — drops the session cache so the next read refetches. */
+export function resetLessonFeatureFlagsCache(): void {
+  flagsCache = null;
+  flagsInflight = null;
+}
+
+export function useLessonFeatureFlag(flag: LessonFeatureFlag): boolean {
+  const [enabled, setEnabled] = useState<boolean>(
+    flagsCache ? flagsCache[flag] : LESSON_FEATURE_DEFAULTS[flag],
+  );
+  useEffect(() => {
+    let mounted = true;
+    fetchLessonFeatureFlags()
+      .then((f) => {
+        if (mounted) setEnabled(f[flag]);
+      })
+      .catch(() => {
+        /* keep default ON */
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [flag]);
+  return enabled;
 }

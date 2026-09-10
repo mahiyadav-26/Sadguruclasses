@@ -22,6 +22,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [v1.4.1] — 2026-09-10
+
+### Added
+- Reader auto-scroll respects the admin toggle: the auto-scroll FAB in the
+  library doc reader, PDF viewer and Notion notes now hides when
+  `lesson_reader_autoscroll` is off; Smart Notes reader follows
+  `lesson_notes_autoscroll`.
+- `useLessonFeatureFlag` — provider-free, cached, defaults ON flag reader for
+  surfaces rendered outside the react-query tree.
+
+---
+
 ## [v1.4.0] — 2026-09-10
 
 ### Changed

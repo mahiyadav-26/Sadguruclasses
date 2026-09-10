@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { toast } from "sonner";
 import ObsidianMarkdown from "./ObsidianMarkdown";
+import { useLessonFeatureFlag } from "@/hooks/useLessonFeatureFlags";
 import AutoScrollFab from "../viewer/AutoScrollFab";
 import RotatePhoneIcon from "../icons/RotatePhoneIcon";
 import { lockOrientation, unlockOrientation } from "../../lib/screenOrientation";
@@ -139,6 +140,7 @@ interface Props {
  */
 export default function SmartNotesReader({ markdown, title, onBack, onDownload, onOpenLink, lessonId, courseId, noteId, defaultReadingMode }: Props) {
   const isEditable = !!(lessonId || courseId || noteId);
+  const notesAutoScrollEnabled = useLessonFeatureFlag("notesAutoScroll");
   const { note, loading: noteLoading, saving: noteSaving, save: saveNote, scheduleAutoSave } = useSmartNote({
     lessonId, courseId, noteId, defaultTitle: title,
   });
@@ -392,6 +394,7 @@ export default function SmartNotesReader({ markdown, title, onBack, onDownload, 
       </div>
 
       {/* AutoScroll FAB */}
+      {notesAutoScrollEnabled && (
       <AutoScrollFab
         targetRef={targetRef}
         bottomOffset={96}
@@ -401,6 +404,7 @@ export default function SmartNotesReader({ markdown, title, onBack, onDownload, 
           else if (!readingMode) { setChromeVisible(true); scheduleHide(); }
         }}
       />
+      )}
 
       {/* Rotate FAB — custom phone-rotate icon (no PNG, counter-clockwise arrow). */}
       <button

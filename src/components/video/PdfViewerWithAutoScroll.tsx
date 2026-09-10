@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import PdfViewer, { type PdfViewerHandle } from "./PdfViewer";
+import { useLessonFeatureFlag } from "@/hooks/useLessonFeatureFlags";
 import AutoScrollFab from "../viewer/AutoScrollFab";
 import { useReaderChrome } from "../../hooks/useReaderChrome";
 import { isGoogleDocs, isNotion } from "../../lib/pdfViewerUrl";
@@ -52,6 +53,7 @@ export default function PdfViewerWithAutoScroll({
   // When always-visible, sit well above the mobile browser gesture bar and
   // any dev badges (default 24 hid the FAB under Chrome's URL bar / Lovable badge).
   const effectiveFabOffset = fabBottomOffset ?? (alwaysShowFab ? 96 : 24);
+  const readerAutoScrollEnabled = useLessonFeatureFlag("readerAutoScroll");
   const viewerRef = useRef<PdfViewerHandle>(null);
   const scrollRef = useRef<HTMLElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -108,7 +110,7 @@ export default function PdfViewerWithAutoScroll({
           proxied canvas now, so autoscroll is always available there. */}
       {(() => {
         const hideFab = isGoogleDocs(url) || isNotion(url);
-        if (hideFab) return null;
+        if (hideFab || !readerAutoScrollEnabled) return null;
         return (
           <AutoScrollFab
             targetRef={scrollRef}
