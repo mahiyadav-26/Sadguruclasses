@@ -2,6 +2,7 @@ import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { AttachmentRow } from "@/components/lesson/AttachmentRow";
+import type { LessonAttachment } from "@/hooks/useLessonAttachments";
 
 // "Attachments" chip panel of the lesson page, lifted verbatim out of
 // LessonView.tsx. Purely presentational — every fetch, signed-URL resolve and
@@ -17,11 +18,11 @@ interface LessonAttachmentsPanelProps {
   lessonTitle: string;
   classPdfUrl: string | null | undefined;
   pdfs: LessonPdfItem[];
-  attachments: any[];
+  attachments: LessonAttachment[];
   notesOpen: boolean;
   onToggleNotes: () => void;
   onOpenPdf: (item: LessonPdfItem) => void;
-  resolveAttachmentUrl: (attachment: any) => Promise<string> | string;
+  resolveAttachmentUrl: (attachment: LessonAttachment) => Promise<string | null>;
   onAttachmentDownloaded: (title: string, url: string, filename: string, kind: string) => void;
   pdfsLoading: boolean;
   attachmentsLoading: boolean;
