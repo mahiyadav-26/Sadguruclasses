@@ -45,7 +45,7 @@ import {
   Upload, Users, CheckCircle, XCircle, Clock,
   Trash2, Plus, BookOpen, ExternalLink, ShieldAlert, Search,
   Download, Filter, RefreshCw, Eye, IndianRupee, Loader2, Library, Calendar,
-  GraduationCap, UserCheck, UserX, Radio, ImageIcon, MessageSquare, Monitor, MonitorPlay, Smartphone, LogOut,
+  GraduationCap, UserCheck, UserX, Radio, ImageIcon, MessageSquare, Monitor, MonitorPlay, SlidersHorizontal, Smartphone, LogOut,
   FileText, Link as LinkIcon, LayoutDashboard,
 } from "lucide-react";
 
@@ -56,6 +56,7 @@ import {
 const ContentDrillDown = lazyWithRetry(() => import("../components/admin/ContentDrillDown"));
 const SocialLinksManager = lazyWithRetry(() => import("../components/admin/SocialLinksManager"));
 const PlayerReaderControlsManager = lazyWithRetry(() => import("../components/admin/PlayerReaderControls"));
+const LessonFeatureControlsManager = lazyWithRetry(() => import("../components/admin/LessonFeatureControls"));
 const HeroBannerManager = lazyWithRetry(() => import("../components/admin/HeroBannerManager"));
 const LandingCoursesManager = lazyWithRetry(() => import("../components/admin/LandingCoursesManager"));
 const TestimonialsManager = lazyWithRetry(() => import("../components/admin/TestimonialsManager"));
@@ -682,6 +683,7 @@ const Admin = () => {
             <TabsTrigger data-tab="testimonials" value="testimonials" className="py-2 min-h-[44px] shrink-0 gap-1"><MessageSquare className="h-4 w-4" />Reviews</TabsTrigger>
            <TabsTrigger data-tab="social" value="social" className="py-2 min-h-[44px] shrink-0 gap-1"><ExternalLink className="h-4 w-4" />Social</TabsTrigger>
            <TabsTrigger data-tab="player-reader" value="player-reader" className="py-2 min-h-[44px] shrink-0 gap-1"><MonitorPlay className="h-4 w-4" />Player & Reader</TabsTrigger>
+           <TabsTrigger data-tab="lesson-features" value="lesson-features" className="py-2 min-h-[44px] shrink-0 gap-1"><SlidersHorizontal className="h-4 w-4" />Lesson Features</TabsTrigger>
            <TabsTrigger data-tab="sessions" value="sessions" className="py-2 min-h-[44px] shrink-0 gap-1"><Monitor className="h-4 w-4" />Sessions</TabsTrigger>
 
             <TabsTrigger data-tab="syllabus" value="syllabus" className="py-2 min-h-[44px] shrink-0 gap-1"><FileText className="h-4 w-4" />Syllabus</TabsTrigger>
@@ -847,6 +849,7 @@ const Admin = () => {
           </TabsContent>
 
            {/* PLAYER & READER TAB */}
+           <TabsContent value="lesson-features">{activeTab === 'lesson-features' && <Suspense fallback={<PanelFallback />}><LessonFeatureControlsManager /></Suspense>}</TabsContent>
            <TabsContent value="player-reader">{activeTab === 'player-reader' && <Suspense fallback={<PanelFallback />}><PlayerReaderControlsManager /></Suspense>}</TabsContent>
 
            {/* SOCIAL TAB */}

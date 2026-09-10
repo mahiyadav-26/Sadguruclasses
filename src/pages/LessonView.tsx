@@ -79,6 +79,7 @@ const ObsidianMarkdown = lazyWithRetry(() => import("../components/notes/Obsidia
 const SmartNotesLinkDialog = lazyWithRetry(() => import("../components/notes/SmartNotesLinkDialog"));
 const SmartNotesListSheet = lazyWithRetry(() => import("../components/notes/SmartNotesListSheet"));
 import AutoScrollFab from "../components/viewer/AutoScrollFab";
+import { useLessonFeatureFlags } from "../hooks/useLessonFeatureFlags";
 import { CollapsiblePdfSection } from "@/features/lesson/components/CollapsiblePdfSection";
 import { LessonChipStrip } from "@/features/lesson/components/LessonChipStrip";
 import { LessonDesktopHeader } from "@/features/lesson/components/LessonDesktopHeader";
@@ -1200,9 +1201,12 @@ const LessonView = () => {
   // Check if user is admin or teacher
   const { isAdmin, isTeacher } = useAuth();
   const isAdminOrTeacher = isAdmin || isTeacher;
+  // Admin-controlled lesson feature switches (site_settings). Defaults are
+  // all-ON, so the page behaves exactly as before until an admin flips one.
+  const lessonFlags = useLessonFeatureFlags();
   const lessonChips = useMemo(
-    () => buildLessonChips({ hasNotes, isAdminOrTeacher, hasLiked, likeCount }),
-    [hasNotes, isAdminOrTeacher, hasLiked, likeCount],
+    () => buildLessonChips({ hasNotes, isAdminOrTeacher, hasLiked, likeCount, flags: lessonFlags }),
+    [hasNotes, isAdminOrTeacher, hasLiked, likeCount, lessonFlags],
   );
 
   // Load notes from storage when lesson changes
@@ -1461,7 +1465,7 @@ const LessonView = () => {
   // Enrollment guard: redirect unenrolled non-admin users
   useEffect(() => {
     if (!loading && !hasPurchased && !isAdminOrTeacher && courseId && user) {
-      toast.error("Please purchase this course to access lessons.");
+      toast.error("Please purchase this course to access lessons.", { id: "course-locked" });
       navigate(`/buy-course?id=${courseId}`, { replace: true });
     }
   }, [loading, hasPurchased, isAdminOrTeacher, courseId, user, navigate]);
@@ -1959,6 +1963,7 @@ const LessonView = () => {
                                   downloadablePdfs.push({ id: p.id, file_name: p.file_name, file_url: p.file_url, file_size: p.file_size });
                                 });
                                 if (downloadablePdfs.length === 0) return null;
+                                if (!lessonFlags.pdfDownload) return null;
                                 return (
                                   <button
                                     type="button"
@@ -1986,7 +1991,7 @@ const LessonView = () => {
 
                     {/* TABS COMPONENT — horizontal pill chips */}
                     <div ref={tabsRef}>
-                    {currentLesson && (
+                    {currentLesson && lessonFlags.chipStrip && (
                     <div className={cn("w-full", isReader ? "mt-0" : "mt-2")}>
                       {/* Pill chip strip — auto-hides while reading PDF. Floating glass-card look. */}
                       <LessonChipStrip
@@ -2110,7 +2115,9 @@ const LessonView = () => {
                                 <Suspense fallback={<LoadingSpinner />}><ObsidianMarkdown>{currentLesson!.transcript_md!}</ObsidianMarkdown></Suspense>
                               </div>
                               {/* Inline Auto-Scroll FAB — scrolls the notes container above */}
-                              <AutoScrollFab targetRef={inlineNotesScrollRef} bottomOffset={96} />
+                              {lessonFlags.notesAutoScroll && (
+                                <AutoScrollFab targetRef={inlineNotesScrollRef} bottomOffset={96} />
+                              )}
                             </div>
                           ) : (
                             <div className="w-full px-4 sm:px-6 pt-4 pb-10">

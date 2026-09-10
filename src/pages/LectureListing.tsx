@@ -250,7 +250,7 @@ const LectureListing = () => {
   useEffect(() => {
     if (loading || !courseId || !user) return;
     if (!hasPurchased && !isAdminOrTeacher) {
-      toast.error("Please purchase this course to access content.");
+      toast.error("Please purchase this course to access content.", { id: "course-locked" });
       navigate(`/buy-course?id=${courseId}`, { replace: true });
     }
   }, [loading, hasPurchased, isAdminOrTeacher, courseId, user, navigate]);
