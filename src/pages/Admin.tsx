@@ -13,9 +13,14 @@ import {
   buildCsv, csvFileName,
 } from "@/features/admin/lib/adminFilters";
 import type { AdminUser } from "@/features/admin/lib/adminFilters";
-import { RoleBadge, StatusBadge } from "@/features/admin/components/AdminBadges";
+import { paymentTotals } from "@/features/admin/lib/adminStats";
 import { AdminUsersTab } from "@/features/admin/components/AdminUsersTab";
 import { AdminSessionsTab } from "@/features/admin/components/AdminSessionsTab";
+import { AdminOverviewTab } from "@/features/admin/components/AdminOverviewTab";
+import { AdminPaymentsTab } from "@/features/admin/components/AdminPaymentsTab";
+import { AdminTeachersTab } from "@/features/admin/components/AdminTeachersTab";
+import { AdminCoursesTab } from "@/features/admin/components/AdminCoursesTab";
+import { AdminRefundDialog } from "@/features/admin/components/AdminRefundDialog";
 import Header from "../components/Layout/Header";
 import Sidebar from "../components/Layout/Sidebar";
 import { Button } from "../components/ui/button";
@@ -283,6 +288,20 @@ const Admin = () => {
     [usersList, teacherSearch],
   );
 
+  // Payment revenue maths lives in src/features/admin/lib/adminStats.ts so the
+  // rules stay unit-testable; the tab just renders the result.
+  const paymentSummary = useMemo(
+    () => paymentTotals(payments, razorpayPayments),
+    [payments, razorpayPayments],
+  );
+
+  // Receipt screenshots are private: sign a short-lived URL before opening.
+  const handleViewScreenshot = async (screenshotPath: string) => {
+    const { data, error } = await supabase.storage.from('receipts').createSignedUrl(screenshotPath, 3600);
+    if (data?.signedUrl) await openResource({ url: data.signedUrl, kind: "image" });
+    else if (error) toast.error('Could not load screenshot');
+  };
+
   // --- EXPORT ---
   const exportToCSV = (data: any[], filename: string) => {
     const csvContent = buildCsv(data);
@@ -375,6 +394,12 @@ const Admin = () => {
 
   const openRefundDialog = (payment: any) => {
     setRefundConfirmPayment(payment);
+    setRefundConfirmText("");
+    setRefundAmountText("");
+  };
+
+  const closeRefundDialog = () => {
+    setRefundConfirmPayment(null);
     setRefundConfirmText("");
     setRefundAmountText("");
   };
@@ -549,9 +574,8 @@ const Admin = () => {
     { label: "Sessions", description: "Active devices & logout", icon: Monitor, tab: "sessions" },
   ];
 
-  // Badge rendering lives in src/features/admin/components/AdminBadges.tsx.
-  const getRoleBadge = (role: string | null) => <RoleBadge role={role} />;
-  const getStatusBadge = (status: string) => <StatusBadge status={status} />;
+  // Badge rendering lives in src/features/admin/components/AdminBadges.tsx and
+  // is now used directly inside the extracted tab panels.
 
   // Loading state
   const [loadTimeout, setLoadTimeout] = useState(false);
@@ -665,214 +689,37 @@ const Admin = () => {
 
 
           {/* OVERVIEW TAB */}
-          <TabsContent value="overview">{activeTab === 'overview' && (<>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6">
-              {stats.map((stat) => (
-                <Card key={stat.label} className={`border-none shadow-sm ${stat.tab ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
-                  onClick={() => { if (stat.tab) setActiveTab(stat.tab); }}>
-                  <CardContent className="p-2 md:p-4 flex items-center gap-1.5 md:gap-4 min-w-0">
-                    <div className={`p-1.5 md:p-3 rounded-md md:rounded-xl shrink-0 ${stat.color}`}>
-                      <stat.icon className="h-3.5 w-3.5 md:h-6 md:w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-base md:text-2xl font-bold text-foreground leading-tight">{stat.value}</p>
-                      <p className="text-[10px] md:text-sm text-muted-foreground font-medium truncate">{stat.label}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Quick Actions Grid */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Actions</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {quickActions.map((action) => (
-                  <Card
-                    key={action.label}
-                    className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
-                    onClick={() => {
-                      if (action.route) navigate(action.route);
-                      else if (action.tab) setActiveTab(action.tab);
-                    }}
-                  >
-                    <CardContent className="p-4 flex flex-col items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                        <action.icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">{action.label}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </>)}</TabsContent>
+          <TabsContent value="overview">{activeTab === 'overview' && (
+            <AdminOverviewTab
+              stats={stats}
+              quickActions={quickActions}
+              onSelectTab={setActiveTab}
+              onNavigate={navigate}
+            />
+          )}</TabsContent>
 
           {/* PAYMENTS TAB */}
-          <TabsContent value="payments">{activeTab === 'payments' && (<>
-            {(() => {
-              const now = new Date();
-              const todayStr = now.toISOString().split('T')[0];
-              const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-              const completedRzp = razorpayPayments.filter(p => p.status?.toLowerCase() === 'completed');
-              const approvedManual = payments.filter(p => p.status?.toLowerCase() === 'approved');
-              const todayRzp = completedRzp.filter(p => p.created_at?.startsWith(todayStr)).reduce((s: number, p: any) => s + (p.amount || 0), 0);
-              const todayManual = approvedManual.filter(p => p.created_at?.startsWith(todayStr)).reduce((s: number, p: any) => s + (p.amount || 0), 0);
-              const monthRzp = completedRzp.filter(p => p.created_at >= monthStart).reduce((s: number, p: any) => s + (p.amount || 0), 0);
-              const monthManual = approvedManual.filter(p => p.created_at >= monthStart).reduce((s: number, p: any) => s + (p.amount || 0), 0);
-              return (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-                  <Card className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Total Revenue</p>
-                    <p className="text-xl font-bold text-primary">₹{statsData.totalRevenue.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">All Time</p>
-                  </Card>
-                  <Card className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Today</p>
-                    <p className="text-xl font-bold text-emerald-600">₹{(todayRzp + todayManual).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{completedRzp.filter(p => p.created_at?.startsWith(todayStr)).length + approvedManual.filter(p => p.created_at?.startsWith(todayStr)).length} txns</p>
-                  </Card>
-                  <Card className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">This Month</p>
-                    <p className="text-xl font-bold text-blue-600">₹{(monthRzp + monthManual).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{completedRzp.filter(p => p.created_at >= monthStart).length + approvedManual.filter(p => p.created_at >= monthStart).length} txns</p>
-                  </Card>
-                  <Card className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Manual UPI</p>
-                    <p className="text-xl font-bold">₹{approvedManual.reduce((s: number, p: any) => s + (p.amount || 0), 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{approvedManual.length} approved</p>
-                  </Card>
-                  <Card className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Razorpay</p>
-                    <p className="text-xl font-bold">₹{completedRzp.reduce((s: number, p: any) => s + (p.amount || 0), 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{completedRzp.length} completed</p>
-                  </Card>
-                </div>
-              );
-            })()}
-            <Card className="border shadow-sm">
-              <CardHeader className="bg-orange-50/50 border-b pb-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <CardTitle className="flex items-center gap-2 text-orange-700">
-                    <ShieldAlert className="h-5 w-5" /> All Payments ({filteredPayments.length})
-                  </CardTitle>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="Search name, UTR, course..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} className="pl-9" />
-                    </div>
-                    <Select value={paymentStatusFilter} onValueChange={(v: any) => setPaymentStatusFilter(v)}>
-                      <SelectTrigger className="w-[130px]"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="refunded">Refunded</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm" onClick={() => exportToCSV(filteredPayments.map(p => ({
-                      method: p._method === 'razorpay' ? 'Razorpay' : 'UPI Manual',
-                      name: p._displayName, course: p._course, amount: p._amount, status: p._status, date: p._date,
-                      ref: p.transaction_id || p.razorpay_payment_id || '',
-                    })), 'payments')}>
-                      <Download className="h-4 w-4 mr-1" /> Export
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[500px] max-h-[calc(100dvh-260px)]">
-                  {filteredPayments.length === 0 ? (
-                    <div className="text-center py-12">
-                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3 opacity-20" />
-                      <p className="text-muted-foreground">No payments found.</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {filteredPayments.map((req) => (
-                        <div key={req._key} className="p-4 md:p-5 hover:bg-muted/30 transition-colors flex flex-col md:flex-row gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="font-bold text-foreground">{req._course}</h3>
-                                  {getStatusBadge(req._status)}
-                                  <Badge variant={req._method === 'razorpay' ? 'default' : 'outline'} className="text-xs">
-                                    {req._method === 'razorpay' ? '💳 Razorpay' : '📱 UPI Manual'}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {req._method === 'razorpay' ? `Order: ${req.razorpay_order_id?.slice(-8) || '—'}` : `${req._displayName} · ${req._email || '—'}`}
-                                </p>
-                              </div>
-                              <Badge variant="outline" className="text-base px-3 py-1 shrink-0">₹{req._amount}</Badge>
-                            </div>
-                            {req._method === 'upi' && (
-                              <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg text-xs space-y-1 border border-blue-100 dark:border-blue-900">
-                                <p className="flex justify-between"><span className="text-blue-600 font-medium">Sender:</span><span className="font-bold">{req.sender_name || '—'}</span></p>
-                                <p className="flex justify-between"><span className="text-blue-600 font-medium">UTR:</span><span className="font-mono font-bold">{req.transaction_id || '—'}</span></p>
-                              </div>
-                            )}
-                            {req._method === 'razorpay' && req.razorpay_payment_id && (
-                              <div className="bg-primary/5 p-2 rounded-lg text-xs border border-primary/10">
-                                <p>Payment ID: <span className="font-mono">{req.razorpay_payment_id}</span></p>
-                              </div>
-                            )}
-                            <p className="text-xs text-muted-foreground">{new Date(req._date).toLocaleString('en-IN')}</p>
-                          </div>
-                          {req._method === 'upi' && (
-                            <div className="flex flex-col gap-2 min-w-[180px]">
-                              {req.screenshot_url && (
-                                <a href="#" onClick={async (e) => {
-                                  e.preventDefault();
-                                  const { data, error } = await supabase.storage.from('receipts').createSignedUrl(req.screenshot_url, 3600);
-                                  if (data?.signedUrl) await openResource({ url: data.signedUrl, kind: "image" });
-                                  else if (error) toast.error('Could not load screenshot');
-                                }}>
-                                  <Button variant="outline" className="w-full" size="sm"><Eye className="h-4 w-4 mr-2" />View Screenshot</Button>
-                                </a>
-                              )}
-                              {req._status === 'pending' && (
-                                <div className="flex gap-2">
-                                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprovePayment(req)}>
-                                    <CheckCircle className="h-4 w-4 mr-1" />Approve
-                                  </Button>
-                                  <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleRejectPayment(req.id)}>
-                                    <XCircle className="h-4 w-4 mr-1" />Reject
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {req._method === 'razorpay' && req._status === 'completed' && req.razorpay_payment_id && (
-                            <div className="flex flex-col gap-2 min-w-[180px]">
-                              <Button 
-                                size="sm" 
-                                variant="destructive" 
-                                className="w-full"
-                                disabled={refundingPayment === req._key}
-                                onClick={() => openRefundDialog(req)}
-                              >
-                                {refundingPayment === req._key ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-                                Refund
-                              </Button>
-                            </div>
-                          )}
-
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </>)}</TabsContent>
+          <TabsContent value="payments">{activeTab === 'payments' && (
+            <AdminPaymentsTab
+              payments={filteredPayments}
+              totalRevenue={statsData.totalRevenue}
+              totals={paymentSummary}
+              search={paymentSearch}
+              onSearchChange={setPaymentSearch}
+              statusFilter={paymentStatusFilter}
+              onStatusFilterChange={setPaymentStatusFilter}
+              refundingPayment={refundingPayment}
+              onExport={() => exportToCSV(filteredPayments.map(p => ({
+                method: p._method === 'razorpay' ? 'Razorpay' : 'UPI Manual',
+                name: p._displayName, course: p._course, amount: p._amount, status: p._status, date: p._date,
+                ref: p.transaction_id || p.razorpay_payment_id || '',
+              })), 'payments')}
+              onApprove={handleApprovePayment}
+              onReject={handleRejectPayment}
+              onRefund={openRefundDialog}
+              onViewScreenshot={(req) => handleViewScreenshot(req.screenshot_url)}
+            />
+          )}</TabsContent>
 
           {/* USERS TAB */}
           <TabsContent value="users">{activeTab === 'users' && (
@@ -892,224 +739,51 @@ const Admin = () => {
           )}</TabsContent>
 
           {/* TEACHERS TAB */}
-          <TabsContent value="teachers">{activeTab === 'teachers' && (<>
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="border shadow-sm">
-                <CardHeader className="border-b pb-4">
-                  <CardTitle className="flex items-center gap-2 text-emerald-700"><UserCheck className="h-5 w-5" /> Active Teachers ({activeTeachers.length})</CardTitle>
-                  <p className="text-sm text-muted-foreground">These users can access Students &amp; Attendance in the sidebar.</p>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  {activeTeachers.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                      <p className="text-sm">No teachers assigned yet.</p>
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[400px] max-h-[60vh] pr-2">
-                      <div className="space-y-2">
-                        {activeTeachers.map(teacher => (
-                          <div key={teacher.id} className="flex items-center justify-between p-3 rounded-lg border bg-emerald-50/40 hover:bg-emerald-50 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                <span className="text-emerald-700 font-bold text-sm">{(teacher.full_name || teacher.email || "?")[0].toUpperCase()}</span>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-sm truncate">{teacher.full_name || "Unnamed"}</p>
-                                <p className="text-xs text-muted-foreground truncate">{teacher.email}</p>
-                              </div>
-                            </div>
-                            <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10 flex-shrink-0 ml-2"
-                              disabled={roleChanging[teacher.id]} onClick={() => handleChangeRole(teacher.id, 'student')}>
-                              {roleChanging[teacher.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <><UserX className="h-3 w-3 mr-1" />Revoke</>}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="border shadow-sm">
-                <CardHeader className="border-b pb-4">
-                  <CardTitle className="flex items-center gap-2 text-primary"><GraduationCap className="h-5 w-5" /> Assign Teacher Role</CardTitle>
-                  <div className="relative mt-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search students by name or email..." value={teacherSearch} onChange={(e) => setTeacherSearch(e.target.value)} className="pl-9" />
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  {promotableStudents.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                      <p className="text-sm">{teacherSearch ? "No students match your search." : "No students available."}</p>
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[400px] max-h-[60vh] pr-2">
-                      <div className="space-y-2">
-                        {promotableStudents.map(student => (
-                          <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                <span className="text-foreground font-bold text-sm">{(student.full_name || student.email || "?")[0].toUpperCase()}</span>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-sm truncate">{student.full_name || "Unnamed"}</p>
-                                <p className="text-xs text-muted-foreground truncate">{student.email}</p>
-                              </div>
-                            </div>
-                            <Button size="sm" className="flex-shrink-0 ml-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                              disabled={roleChanging[student.id]} onClick={() => handleChangeRole(student.id, 'teacher')}>
-                              {roleChanging[student.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <><GraduationCap className="h-3 w-3 mr-1" />Make Teacher</>}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </>)}</TabsContent>
+          <TabsContent value="teachers">{activeTab === 'teachers' && (
+            <AdminTeachersTab
+              activeTeachers={activeTeachers}
+              promotableStudents={promotableStudents}
+              search={teacherSearch}
+              onSearchChange={setTeacherSearch}
+              roleChanging={roleChanging}
+              onChangeRole={handleChangeRole}
+            />
+          )}</TabsContent>
 
           {/* COURSES TAB */}
-          <TabsContent value="courses">{activeTab === 'courses' && (<>
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader><CardTitle>Create Course</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2"><Label>Title</Label><Input value={newCourse.title} onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })} placeholder="Class 10 Science" /></div>
-                  <div className="space-y-2"><Label>Description</Label><Textarea value={newCourse.description} onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })} placeholder="Details..." /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Price (₹)</Label><Input type="number" value={newCourse.price} onChange={(e) => setNewCourse({ ...newCourse, price: e.target.value })} placeholder="499" /></div>
-                    <div className="space-y-2"><Label>Grade</Label><Input value={newCourse.grade} onChange={(e) => setNewCourse({ ...newCourse, grade: e.target.value })} placeholder="10" /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={newCourse.startDate} onChange={(e) => setNewCourse({ ...newCourse, startDate: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>End Date</Label><Input type="date" value={newCourse.endDate} onChange={(e) => setNewCourse({ ...newCourse, endDate: e.target.value })} /></div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Course Thumbnail</Label>
-                    <div className="flex gap-2 mb-2">
-                      <Button type="button" size="sm" variant={courseThumbnailMode === "file" ? "default" : "outline"} onClick={() => setCourseThumbnailMode("file")}>
-                        <Upload className="h-3 w-3 mr-1" /> Upload
-                      </Button>
-                      <Button type="button" size="sm" variant={courseThumbnailMode === "url" ? "default" : "outline"} onClick={() => setCourseThumbnailMode("url")}>
-                        <LinkIcon className="h-3 w-3 mr-1" /> URL
-                      </Button>
-                    </div>
-                    {courseThumbnailMode === "file" ? (
-                      <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                        <input type="file" accept="image/*" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} className="hidden" id="thumbnail-upload" />
-                        <label htmlFor="thumbnail-upload" className="cursor-pointer">
-                          {thumbnailFile ? (
-                            <div className="flex items-center justify-center gap-2 text-green-600"><Eye className="h-5 w-5" /><span className="font-medium text-sm">{thumbnailFile.name}</span></div>
-                          ) : (
-                            <div className="text-muted-foreground text-sm"><Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" /><p>Click to upload thumbnail image</p></div>
-                          )}
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="https://example.com/image.jpg"
-                          value={courseThumbnailUrl}
-                          onChange={(e) => setCourseThumbnailUrl(e.target.value)}
-                        />
-                        {courseThumbnailUrl && (
-                          <img src={courseThumbnailUrl} alt="Preview" className="h-20 w-auto rounded-lg object-cover border" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <Button className="w-full" onClick={handleCreateCourse} disabled={isCreatingCourse}>
-                    {isCreatingCourse ? <Clock className="animate-spin mr-2" /> : <Plus className="mr-2 h-4 w-4" />} Create Course
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Course List</CardTitle>
-                    <Button variant="outline" size="sm" onClick={() => exportToCSV(filteredCourses.map(c => ({
-                      title: c.title, description: c.description, price: c.price, grade: c.grade, created_at: c.created_at
-                    })), 'courses')}>
-                      <Download className="h-4 w-4 mr-1" /> Export
-                    </Button>
-                  </div>
-                  <div className="relative mt-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search courses..." value={courseSearch} onChange={(e) => setCourseSearch(e.target.value)} className="pl-9" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[350px]">
-                    <div className="space-y-3">
-                      {filteredCourses.map((c) => (
-                        <div key={c.id} className="p-3 border rounded-lg bg-card space-y-2">
-                          {editingCourseId === c.id ? (
-                            <div className="space-y-2">
-                              <Input value={editCourseData.title} onChange={(e) => setEditCourseData({ ...editCourseData, title: e.target.value })} placeholder="Title" />
-                              <Textarea value={editCourseData.description} onChange={(e) => setEditCourseData({ ...editCourseData, description: e.target.value })} placeholder="Description" rows={2} />
-                              <div className="grid grid-cols-2 gap-2">
-                                <Input value={editCourseData.price} onChange={(e) => setEditCourseData({ ...editCourseData, price: e.target.value })} placeholder="Price" type="number" />
-                                <Input value={editCourseData.grade} onChange={(e) => setEditCourseData({ ...editCourseData, grade: e.target.value })} placeholder="Grade" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1"><Label className="text-xs">Start Date</Label><Input type="date" value={editCourseData.startDate} onChange={(e) => setEditCourseData({ ...editCourseData, startDate: e.target.value })} /></div>
-                                <div className="space-y-1"><Label className="text-xs">End Date</Label><Input type="date" value={editCourseData.endDate} onChange={(e) => setEditCourseData({ ...editCourseData, endDate: e.target.value })} /></div>
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Thumbnail</Label>
-                                <div className="flex gap-2">
-                                  <Button type="button" size="sm" variant={editThumbnailMode === "file" ? "default" : "outline"} onClick={() => setEditThumbnailMode("file")}>
-                                    <Upload className="h-3 w-3 mr-1" /> Upload
-                                  </Button>
-                                  <Button type="button" size="sm" variant={editThumbnailMode === "url" ? "default" : "outline"} onClick={() => setEditThumbnailMode("url")}>
-                                    <LinkIcon className="h-3 w-3 mr-1" /> URL
-                                  </Button>
-                                </div>
-                                {editThumbnailMode === "file" ? (
-                                  <div className="border border-dashed rounded p-2 text-center">
-                                    <input type="file" accept="image/*" onChange={(e) => setEditThumbnailFile(e.target.files?.[0] || null)} className="hidden" id={`edit-thumb-${c.id}`} />
-                                    <label htmlFor={`edit-thumb-${c.id}`} className="cursor-pointer text-xs text-muted-foreground">
-                                      {editThumbnailFile ? editThumbnailFile.name : (c.thumbnail_url ? "Change thumbnail" : "Upload thumbnail")}
-                                    </label>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    <Input placeholder="https://example.com/image.jpg" value={editThumbnailUrl} onChange={(e) => setEditThumbnailUrl(e.target.value)} />
-                                    {editThumbnailUrl && (
-                                      <img src={editThumbnailUrl} alt="Thumbnail preview" className="h-20 w-auto rounded-lg object-cover border" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={handleSaveCourseEdit}><CheckCircle className="h-3 w-3 mr-1" /> Save</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setEditingCourseId(null)}>Cancel</Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex justify-between items-center">
-                              <div><p className="font-semibold">{c.title}</p><p className="text-xs text-muted-foreground">₹{c.price} • Grade {c.grade}</p></div>
-                              <div className="flex items-center gap-1">
-                                <Button size="icon" variant="ghost" className="text-blue-500 hover:bg-blue-50" onClick={() => handleEditCourse(c)}><Eye className="h-4 w-4" /></Button>
-                                <Button size="icon" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => handleDeleteCourse(c.id)}><Trash2 className="h-4 w-4" /></Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {filteredCourses.length === 0 && <p className="text-center text-muted-foreground py-10">No courses found.</p>}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-          </>)}</TabsContent>
+          <TabsContent value="courses">{activeTab === 'courses' && (
+            <AdminCoursesTab
+              newCourse={newCourse}
+              onNewCourseChange={setNewCourse}
+              isCreatingCourse={isCreatingCourse}
+              onCreateCourse={handleCreateCourse}
+              thumbnailFile={thumbnailFile}
+              onThumbnailFileChange={setThumbnailFile}
+              courseThumbnailUrl={courseThumbnailUrl}
+              onCourseThumbnailUrlChange={setCourseThumbnailUrl}
+              courseThumbnailMode={courseThumbnailMode}
+              onCourseThumbnailModeChange={setCourseThumbnailMode}
+              courses={filteredCourses}
+              search={courseSearch}
+              onSearchChange={setCourseSearch}
+              onExport={() => exportToCSV(filteredCourses.map(c => ({
+                title: c.title, description: c.description, price: c.price, grade: c.grade, created_at: c.created_at
+              })), 'courses')}
+              editingCourseId={editingCourseId}
+              editCourseData={editCourseData}
+              onEditCourseDataChange={setEditCourseData}
+              editThumbnailFile={editThumbnailFile}
+              onEditThumbnailFileChange={setEditThumbnailFile}
+              editThumbnailUrl={editThumbnailUrl}
+              onEditThumbnailUrlChange={setEditThumbnailUrl}
+              editThumbnailMode={editThumbnailMode}
+              onEditThumbnailModeChange={setEditThumbnailMode}
+              onEditCourse={handleEditCourse}
+              onSaveCourseEdit={handleSaveCourseEdit}
+              onCancelEdit={() => setEditingCourseId(null)}
+              onDeleteCourse={handleDeleteCourse}
+            />
+          )}</TabsContent>
 
           {/* CONTENT TAB — uses ContentDrillDown with built-in upload */}
           <TabsContent value="content">{activeTab === 'content' && (
@@ -1242,53 +916,15 @@ const Admin = () => {
 
 
       {/* REFUND CONFIRMATION DIALOG */}
-      <Dialog open={!!refundConfirmPayment} onOpenChange={(open) => { if (!open) { setRefundConfirmPayment(null); setRefundConfirmText(""); setRefundAmountText(""); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">⚠️ Confirm Refund</DialogTitle>
-            <DialogDescription>
-              You are about to refund <strong>₹{refundConfirmPayment?._amount}</strong> for course <strong>"{refundConfirmPayment?._course}"</strong>. 
-              This will revoke the student's course access immediately. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label>Refund amount (₹) — leave blank for a full refund</Label>
-            <Input
-              type="number"
-              min="1"
-              step="1"
-              inputMode="decimal"
-              value={refundAmountText}
-              onChange={(e) => setRefundAmountText(e.target.value)}
-              placeholder={`Full refund (₹${refundConfirmPayment?._amount ?? ""})`}
-            />
-            <p className="text-xs text-muted-foreground">
-              A partial refund does <strong>not</strong> remove the student's course access — only a full refund does.
-            </p>
-          </div>
-          <div className="space-y-2 py-2">
-            <Label>Type <span className="font-bold text-destructive">REFUND</span> to confirm:</Label>
-            <Input 
-              value={refundConfirmText} 
-              onChange={(e) => setRefundConfirmText(e.target.value)} 
-              placeholder="Type REFUND here"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setRefundConfirmPayment(null); setRefundConfirmText(""); setRefundAmountText(""); }}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              disabled={refundConfirmText !== "REFUND"}
-              onClick={handleInitiateRefund}
-            >
-              Confirm Refund
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AdminRefundDialog
+        payment={refundConfirmPayment}
+        confirmText={refundConfirmText}
+        onConfirmTextChange={setRefundConfirmText}
+        amountText={refundAmountText}
+        onAmountTextChange={setRefundAmountText}
+        onCancel={closeRefundDialog}
+        onConfirm={handleInitiateRefund}
+      />
     </div>
   );
 };
