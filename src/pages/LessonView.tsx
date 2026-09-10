@@ -80,6 +80,10 @@ const SmartNotesLinkDialog = lazyWithRetry(() => import("../components/notes/Sma
 const SmartNotesListSheet = lazyWithRetry(() => import("../components/notes/SmartNotesListSheet"));
 import AutoScrollFab from "../components/viewer/AutoScrollFab";
 import { CollapsiblePdfSection } from "@/features/lesson/components/CollapsiblePdfSection";
+import { LessonChipStrip } from "@/features/lesson/components/LessonChipStrip";
+import { LessonDesktopHeader } from "@/features/lesson/components/LessonDesktopHeader";
+import { LessonLockedOverlay } from "@/features/lesson/components/LessonLockedOverlay";
+import { buildLessonChips, lessonProgressPercent } from "@/features/lesson/lib/lessonChips";
 import notesFireIcon from "../assets/icons/notes-fire.svg";
 import { logger } from "@/lib/logger";
 import { useLessonChat } from "@/hooks/useLessonChat";
@@ -1196,6 +1200,10 @@ const LessonView = () => {
   // Check if user is admin or teacher
   const { isAdmin, isTeacher } = useAuth();
   const isAdminOrTeacher = isAdmin || isTeacher;
+  const lessonChips = useMemo(
+    () => buildLessonChips({ hasNotes, isAdminOrTeacher, hasLiked, likeCount }),
+    [hasNotes, isAdminOrTeacher, hasLiked, likeCount],
+  );
 
   // Load notes from storage when lesson changes
   useEffect(() => {
@@ -1649,7 +1657,7 @@ const LessonView = () => {
 
   // Calculate Progress Logic
   const completedCount = completedLessonIds.size;
-  const progressPercentage = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
+  const progressPercentage = lessonProgressPercent(completedCount, lessons.length);
 
   // PDF / DPP / NOTES open in immersive full-page DocumentReader (no inline
   // chrome / bottom white strip) so students can read distraction-free.
@@ -1726,28 +1734,14 @@ const LessonView = () => {
       />
 
       {/* --- HEADER (Clean & Minimal) — desktop only --- */}
-      <header className="hidden lg:flex bg-card border-b h-16 items-center px-4 lg:px-6 sticky top-0 z-30 shadow-sm pt-[env(safe-area-inset-top)]">
-        <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2" aria-label="Go back">
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-        </Button>
-        <div className="flex-1">
-            <h1 className="text-sm lg:text-base font-bold text-foreground line-clamp-1">
-                {course.title}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{formatGrade(course.grade)}</span>
-                <span>• {lessons.length} Lessons</span>
-            </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {!hasPurchased && (
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
-            onClick={() => navigate(`/buy-course?id=${courseId}`)}>
-                Buy Now
-            </Button>
-          )}
-        </div>
-      </header>
+      <LessonDesktopHeader
+        courseTitle={course.title}
+        gradeLabel={formatGrade(course.grade)}
+        lessonCount={lessons.length}
+        hasPurchased={hasPurchased}
+        onBack={handleBack}
+        onBuy={() => navigate(`/buy-course?id=${courseId}`)}
+      />
       {/* Mobile top bar removed — was a 44px blank white strip between status
           bar and video. Back navigation is handled by:
             1. Android hardware back (useAndroidBackButton)
@@ -1828,19 +1822,7 @@ const LessonView = () => {
 
                     {/* Locked Overlay */}
                     {currentLesson && !canAccessLesson(currentLesson) && (
-                        <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center z-20 text-center p-6">
-                            <div className="bg-foreground/10 p-4 rounded-full mb-4">
-                                <Lock className="h-8 w-8 text-foreground" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-foreground mb-2">Content Locked</h2>
-                            <p className="text-muted-foreground mb-6 max-w-md">
-                                Poore course ki saari {lessons.length} lessons ek saath.
-                            </p>
-                            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-8"
-                                onClick={() => navigate(`/buy-course?id=${courseId}`)}>
-                                Full course kholo
-                            </Button>
-                        </div>
+                        <LessonLockedOverlay lessonCount={lessons.length} onBuy={() => navigate(`/buy-course?id=${courseId}`)} />
                     )}
                 </div>
                 )}
@@ -2007,57 +1989,16 @@ const LessonView = () => {
                     {currentLesson && (
                     <div className={cn("w-full", isReader ? "mt-0" : "mt-2")}>
                       {/* Pill chip strip — auto-hides while reading PDF. Floating glass-card look. */}
-                      <div
-                        className={cn(
-                          "nb-snap-x flex items-center gap-2 overflow-x-auto scrollbar-hide transition-all duration-300",
-                          isReader && !chromeVisible
-                            ? "hidden"
-                            : "mx-3 lg:mx-0 mb-3 px-3 py-2 rounded-full bg-card/85 backdrop-blur-md border border-border/60 shadow-[0_4px_16px_-6px_rgb(0_0_0/0.12)]"
-                        )}
-                      >
-
-                        {[
-                          { id: "comments",   label: "Comments",   icon: MessageCircle },
-                          { id: "attachment", label: "Attachment", icon: Paperclip },
-                          ...((hasNotes || isAdminOrTeacher) ? [{ id: "notes", label: "Smart Notes", icon: FileText, iconSrc: notesFireIcon }] : []),
-                          { id: "ask-doubt",  label: "Ask Doubt",  icon: HelpCircle },
-                          { id: "timeline",   label: "Timeline",   icon: ListVideo },
-                          { id: "my-doubts",  label: "My Doubts",  icon: MessageSquare },
-                          { id: "bookmarks",  label: "Bookmarks",  icon: BookmarkIcon },
-                          { id: "mentors",    label: "Mentors",    icon: Users },
-                          { id: "like",       label: hasLiked ? `Liked${likeCount > 0 ? ` ${likeCount}` : ''}` : (likeCount > 0 ? `Like ${likeCount}` : "Like"), icon: ThumbsUp, action: "like" as const },
-                          { id: "rating",     label: "Rating",     icon: Star },
-                        ].map((item) => {
-                          const { id, label, icon: Icon } = item;
-                          const iconSrc = (item as { iconSrc?: string }).iconSrc;
-                          const action = (item as { action?: "like" }).action;
-                          const isLikeChip = action === "like";
-                          const active = isLikeChip ? hasLiked : activeChip === id;
-                          return (
-                            <button
-                              key={id}
-                              onClick={() => {
-                                if (action === "like") { toggleLike(); return; }
-                                setActiveChip(id);
-                              }}
-                              disabled={isLikeChip && likesLoading}
-                              className={cn(
-                                "shrink-0 min-h-11 inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors",
-                                active
-                                  ? "bg-foreground text-background border-foreground"
-                                  : "bg-transparent text-foreground border-border hover:bg-accent/30"
-                              )}
-                            >
-                              {iconSrc ? (
-                                <img src={iconSrc} alt="" width={18} height={18} className="h-[18px] w-[18px] shrink-0" />
-                              ) : (
-                                <Icon className={cn("h-4 w-4", isLikeChip && hasLiked && "fill-current")} />
-                              )}
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <LessonChipStrip
+                        chips={lessonChips}
+                        activeChip={activeChip}
+                        hasLiked={hasLiked}
+                        likesLoading={likesLoading}
+                        collapsed={isReader && !chromeVisible}
+                        notesIconSrc={notesFireIcon}
+                        onSelect={setActiveChip}
+                        onToggleLike={() => toggleLike()}
+                      />
 
                       {/* Panel content */}
                       <div className={cn(
