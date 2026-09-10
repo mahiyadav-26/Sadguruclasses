@@ -26,7 +26,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
       swipeDirections={["top", "left", "right"]}
       toastOptions={{
         duration: 2500,
-        dismissible: true,
         classNames: {
           toast: [
             "group toast pointer-events-auto",
