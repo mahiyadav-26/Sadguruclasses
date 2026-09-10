@@ -59,7 +59,7 @@ import { useLessonLikes } from "../hooks/useLessonLikes";
 import { useLessonPdfs } from "../hooks/useLessonPdfs";
 import { useLessonAttachments } from "../hooks/useLessonAttachments";
 import { useLessonProgress } from "../hooks/useLessonProgress";
-import { AttachmentRow } from "../components/lesson/AttachmentRow";
+import { LessonAttachmentsPanel } from "@/features/lesson/components/LessonAttachmentsPanel";
 import { PersonalMentorsPanel } from "../features/lesson/components/PersonalMentorsPanel";
 import { MyDoubtsPanel } from "../features/lesson/components/MyDoubtsPanel";
 import { LessonRatingPanel } from "../features/lesson/components/LessonRatingPanel";
@@ -2396,79 +2396,19 @@ const LessonView = () => {
                               ))}
                             </div>
                           ) : (
-                            <div className="px-4 py-4 space-y-3">
-                                {/* Notes (PDF list) */}
-                                {(currentLesson?.class_pdf_url || lessonPdfs.length > 0) && (
-                                  <div>
-                                    <button
-                                      type="button"
-                                      onClick={() => setNotesOpen(v => !v)}
-                                      className="w-full flex items-center justify-between py-2 text-left"
-                                      aria-expanded={notesOpen}
-                                    >
-                                      <h3 className="font-semibold text-base text-foreground">Notes</h3>
-                                      {notesOpen
-                                        ? <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                                        : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-                                    </button>
-                                    <div
-                                      className={cn(
-                                        "overflow-hidden transition-all duration-200 ease-out",
-                                        notesOpen ? "max-h-[2000px] opacity-100 mt-1" : "max-h-0 opacity-0"
-                                      )}
-                                    >
-                                      <div className="space-y-1 pl-2">
-                                        {currentLesson?.class_pdf_url && (
-                                          <button
-                                            onClick={() => void openPdfItem({ id: 'class-pdf', file_name: `${currentLesson.title} : Class Notes`, file_url: currentLesson.class_pdf_url! })}
-                                            className="flex items-center gap-3 py-2.5 w-full text-left hover:bg-accent/10 active:bg-accent/20 active:scale-[0.99] rounded-md px-2 transition-all duration-150 ease-out"
-                                          >
-                                            <div className="h-7 w-7 rounded-md bg-destructive/10 flex items-center justify-center flex-shrink-0">
-                                              <FileText className="h-3.5 w-3.5 text-destructive" />
-                                            </div>
-                                            <p className="flex-1 min-w-0 text-[15px] text-foreground truncate">{currentLesson.title} : Class Notes</p>
-                                          </button>
-                                        )}
-                                        {lessonPdfs.map((pdf) => (
-                                          <button
-                                            key={pdf.id}
-                                            onClick={() => void openPdfItem({ id: pdf.id, file_name: pdf.file_name, file_url: pdf.file_url })}
-                                            className="flex items-center gap-3 py-2.5 w-full text-left hover:bg-accent/10 active:bg-accent/20 active:scale-[0.99] rounded-md px-2 transition-all duration-150 ease-out"
-                                          >
-                                            <div className="h-7 w-7 rounded-md bg-destructive/10 flex items-center justify-center flex-shrink-0">
-                                              <FileText className="h-3.5 w-3.5 text-destructive" />
-                                            </div>
-                                            <p className="flex-1 min-w-0 text-[15px] text-foreground truncate">{pdf.file_name}</p>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-
-                                {/* Generic file attachments (any kind — pdf, doc, image, video, audio, other) */}
-                                {lessonAttachments.length > 0 && (
-                                  <div>
-                                    <h3 className="font-semibold text-base text-foreground mt-3 mb-1">Attachments</h3>
-                                    <div className="space-y-1 pl-2">
-                                      {lessonAttachments.map((att) => (
-                                        <AttachmentRow
-                                          key={att.id}
-                                          attachment={att}
-                                          onOpenPdf={(url, fileName) => void openPdfItem({ id: att.id, file_name: fileName, file_url: url })}
-                                          resolveUrl={() => getAttachmentUrl(att)}
-                                          onDownloaded={(title, url, filename, kind) => addDownload(title, url, filename, kind)}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {!currentLesson?.class_pdf_url && lessonPdfs.length === 0 && lessonAttachments.length === 0 && !pdfsLoading && !attachmentsLoading && (
-                                  <p className="text-center text-sm text-muted-foreground py-6">No attachments available for this lesson.</p>
-                                )}
-                            </div>
+                            <LessonAttachmentsPanel
+                              lessonTitle={currentLesson?.title || ""}
+                              classPdfUrl={currentLesson?.class_pdf_url}
+                              pdfs={lessonPdfs}
+                              attachments={lessonAttachments}
+                              notesOpen={notesOpen}
+                              onToggleNotes={() => setNotesOpen(v => !v)}
+                              onOpenPdf={(item) => void openPdfItem(item)}
+                              resolveAttachmentUrl={(att) => getAttachmentUrl(att)}
+                              onAttachmentDownloaded={(title, url, filename, kind) => addDownload(title, url, filename, kind)}
+                              pdfsLoading={pdfsLoading}
+                              attachmentsLoading={attachmentsLoading}
+                            />
                           )
                         )}
 
