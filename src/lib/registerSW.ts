@@ -11,6 +11,12 @@
 
 export function registerServiceWorker(): void {
   if (typeof window === "undefined") return;
+
+  // Always wire the "Update available — tap to reload" prompt, even on paths
+  // below that intentionally skip SW registration: a stale lazy chunk after a
+  // deploy (vite:preloadError) can strand any web build.
+  void import("./appUpdate").then((m) => m.initAppUpdatePrompt()).catch(() => {});
+
   if (!("serviceWorker" in navigator)) return;
 
   // Dev guard: only register in production builds.
