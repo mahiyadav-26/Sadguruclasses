@@ -22,6 +22,26 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [v1.3.0] — 2026-09-10
+
+### Changed
+- `Admin.tsx` 1,432 → 1,296 lines: payment unification, search/status filtering,
+  teacher lists and CSV shaping extracted to `src/features/admin/lib/adminFilters.ts`;
+  users tab, sessions tab and role/status badges extracted as components (#43).
+- `LessonView.tsx` 2,636 → 2,576 lines: Notes/Attachments chip panel extracted to
+  `src/features/lesson/components/LessonAttachmentsPanel.tsx` (#44).
+
+### Added
+- 45 tests covering admin filters, admin panels and the lesson attachments panel.
+  Suite 470 → 515 passing.
+
+### CI
+- Coverage ratchet raised to lines 6.7 / functions 5.6 / branches 6.2 / statements 6.3.
+
+No behaviour, permission, RLS, migration or API contract changes.
+
+---
+
 ## [v1.0.0] — 2026-03-08
 
 ### Added
