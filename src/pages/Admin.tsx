@@ -7,6 +7,15 @@ import { supabase } from "../integrations/supabase/client";
 // detectFileType / fileTypeOptions / MaterialFileType moved into LibraryManager
 // where they are now the only consumers. Removed from Admin.tsx to drop dead
 // imports after the library tab extraction.
+import {
+  unifyPayments, filterPayments, filterCourses, filterUsers,
+  activeTeachers as listActiveTeachers, promotableStudents as listPromotableStudents,
+  buildCsv, csvFileName,
+} from "@/features/admin/lib/adminFilters";
+import type { AdminUser } from "@/features/admin/lib/adminFilters";
+import { RoleBadge, StatusBadge } from "@/features/admin/components/AdminBadges";
+import { AdminUsersTab } from "@/features/admin/components/AdminUsersTab";
+import { AdminSessionsTab } from "@/features/admin/components/AdminSessionsTab";
 import Header from "../components/Layout/Header";
 import Sidebar from "../components/Layout/Sidebar";
 import { Button } from "../components/ui/button";
@@ -57,14 +66,8 @@ const PanelFallback = () => (
   </div>
 );
 
-interface UserWithRole {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  mobile: string | null;
-  created_at: string | null;
-  role: string | null;
-}
+// Shape shared with the extracted admin helpers/components.
+type UserWithRole = AdminUser;
 
 // EnrollmentManager extracted to src/components/admin/EnrollmentManager.tsx
 // (memoized, lazy-mountable, easier to test).
@@ -254,67 +257,40 @@ const Admin = () => {
   };
 
   // --- FILTERED DATA ---
-  const allPaymentsUnified = useMemo(() => {
-    const manual = payments.map(p => ({
-      ...p, _method: 'upi' as const, _key: `upi-${p.id}`,
-      _displayName: p.profiles?.full_name || p.sender_name || p.user_name || 'Unknown',
-      _email: p.profiles?.email || '', _course: p.courses?.title || 'Unknown Course',
-      _amount: p.amount, _status: p.status, _date: p.created_at,
-    }));
-    const rzp = razorpayPayments.map(p => ({
-      ...p, _method: 'razorpay' as const, _key: `rzp-${p.id}`,
-      _displayName: p.profiles?.full_name || 'Online Payment',
-      _email: p.profiles?.email || '', _course: p.courses?.title || 'Unknown Course',
-      _amount: p.amount, _status: p.status, _date: p.created_at,
-    }));
-    return [...manual, ...rzp].sort((a, b) => new Date(b._date).getTime() - new Date(a._date).getTime());
-  }, [payments, razorpayPayments]);
+  const allPaymentsUnified = useMemo(
+    () => unifyPayments(payments, razorpayPayments),
+    [payments, razorpayPayments],
+  );
 
-  const filteredPayments = useMemo(() => {
-    const s = paymentSearch.toLowerCase();
-    return allPaymentsUnified.filter(p => {
-      const matchesSearch = !s || p._displayName.toLowerCase().includes(s) || p._email.toLowerCase().includes(s) ||
-        p._course.toLowerCase().includes(s) || (p.transaction_id?.toLowerCase().includes(s)) || (p.razorpay_payment_id?.toLowerCase().includes(s));
-      const matchesStatus = paymentStatusFilter === "all" || p._status?.toLowerCase() === paymentStatusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [allPaymentsUnified, paymentSearch, paymentStatusFilter]);
+  const filteredPayments = useMemo(
+    () => filterPayments(allPaymentsUnified, paymentSearch, paymentStatusFilter),
+    [allPaymentsUnified, paymentSearch, paymentStatusFilter],
+  );
 
-  const filteredCourses = useMemo(() =>
-    coursesList.filter(c => c.title?.toLowerCase().includes(courseSearch.toLowerCase()) || c.grade?.toLowerCase().includes(courseSearch.toLowerCase())),
-  [coursesList, courseSearch]);
+  const filteredCourses = useMemo(
+    () => filterCourses(coursesList, courseSearch),
+    [coursesList, courseSearch],
+  );
 
-  const filteredUsers = useMemo(() =>
-    usersList.filter(u => {
-      const matchesSearch = u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase()) || u.mobile?.toLowerCase().includes(userSearch.toLowerCase());
-      const matchesRole = userRoleFilter === "all" || u.role === userRoleFilter;
-      return matchesSearch && matchesRole;
-    }),
-  [usersList, userSearch, userRoleFilter]);
+  const filteredUsers = useMemo(
+    () => filterUsers(usersList, userSearch, userRoleFilter),
+    [usersList, userSearch, userRoleFilter],
+  );
 
-  const activeTeachers = useMemo(() => usersList.filter(u => u.role === 'teacher'), [usersList]);
-  const promotableStudents = useMemo(() =>
-    usersList.filter(u => (u.role === 'student' || !u.role) &&
-      (u.full_name?.toLowerCase().includes(teacherSearch.toLowerCase()) || u.email?.toLowerCase().includes(teacherSearch.toLowerCase()))
-    ),
-  [usersList, teacherSearch]);
+  const activeTeachers = useMemo(() => listActiveTeachers(usersList), [usersList]);
+  const promotableStudents = useMemo(
+    () => listPromotableStudents(usersList, teacherSearch),
+    [usersList, teacherSearch],
+  );
 
   // --- EXPORT ---
   const exportToCSV = (data: any[], filename: string) => {
-    if (data.length === 0) { toast.error("No data to export"); return; }
-    const headers = Object.keys(data[0]).filter(k => !k.includes('id') && typeof data[0][k] !== 'object');
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(h => {
-        const val = row[h];
-        if (typeof val === 'string' && val.includes(',')) return `"${val}"`;
-        return val ?? '';
-      }).join(','))
-    ].join('\n');
+    const csvContent = buildCsv(data);
+    if (!csvContent) { toast.error("No data to export"); return; }
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = csvFileName(filename);
     link.click();
     toast.success(`Exported ${data.length} records`);
   };
@@ -573,25 +549,9 @@ const Admin = () => {
     { label: "Sessions", description: "Active devices & logout", icon: Monitor, tab: "sessions" },
   ];
 
-  const getRoleBadge = (role: string | null) => {
-    switch (role) {
-      case 'admin': return <Badge className="bg-red-100 text-red-700 border-red-200">Admin</Badge>;
-      case 'teacher': return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Teacher</Badge>;
-      case 'student': return <Badge className="bg-green-100 text-green-700 border-green-200">Student</Badge>;
-      default: return <Badge className="bg-gray-100 text-gray-700 border-gray-200">No Role</Badge>;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'approved': return <Badge className="bg-green-100 text-green-700 border-green-200">Approved</Badge>;
-      case 'completed': return <Badge className="bg-green-100 text-green-700 border-green-200">Completed</Badge>;
-      case 'rejected': return <Badge className="bg-red-100 text-red-700 border-red-200">Rejected</Badge>;
-      case 'failed': return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>;
-      case 'refunded': return <Badge className="bg-purple-100 text-purple-700 border-purple-200">Refunded ↩</Badge>;
-      default: return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>;
-    }
-  };
+  // Badge rendering lives in src/features/admin/components/AdminBadges.tsx.
+  const getRoleBadge = (role: string | null) => <RoleBadge role={role} />;
+  const getStatusBadge = (status: string) => <StatusBadge status={status} />;
 
   // Loading state
   const [loadTimeout, setLoadTimeout] = useState(false);
@@ -915,78 +875,21 @@ const Admin = () => {
           </>)}</TabsContent>
 
           {/* USERS TAB */}
-          <TabsContent value="users">{activeTab === 'users' && (<>
-            <Card className="border shadow-sm">
-              <CardHeader className="bg-blue-50/50 border-b pb-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <CardTitle className="flex items-center gap-2 text-blue-700">
-                    <Users className="h-5 w-5" /> Registered Users ({usersList.length})
-                  </CardTitle>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="Search by name, email, phone..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="pl-9 bg-card" />
-                    </div>
-                    <Select value={userRoleFilter} onValueChange={(v: any) => setUserRoleFilter(v)}>
-                      <SelectTrigger className="w-[130px] bg-card"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm" onClick={() => exportToCSV(filteredUsers.map(u => ({
-                      full_name: u.full_name, email: u.email, mobile: u.mobile, role: u.role, created_at: u.created_at
-                    })), 'users')}>
-                      <Download className="h-4 w-4 mr-1" /> Export
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[500px] max-h-[calc(100dvh-260px)]">
-                  {filteredUsers.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Users className="h-12 w-12 text-blue-500 mx-auto mb-3 opacity-20" />
-                      <p className="text-muted-foreground">No users found.</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {filteredUsers.map((u) => (
-                        <div key={u.id} className="p-4 md:p-5 hover:bg-muted/40 transition-colors flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base flex-shrink-0">
-                            {u.full_name?.charAt(0)?.toUpperCase() || u.email?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground truncate text-sm">{u.full_name || 'Unnamed User'}</h3>
-                            <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                            {u.mobile && <p className="text-xs text-muted-foreground/70">{u.mobile}</p>}
-                          </div>
-                          <div className="shrink-0">
-                            <Select value={u.role || 'student'} onValueChange={(v) => handleChangeRole(u.id, v)} disabled={roleChanging[u.id]}>
-                              <SelectTrigger className="w-28 h-8 text-xs">
-                                {roleChanging[u.id] ? <span className="text-muted-foreground">Saving…</span> : <SelectValue />}
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="student">Student</SelectItem>
-                                <SelectItem value="teacher">Teacher</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="text-right text-xs text-muted-foreground hidden md:block shrink-0">
-                            <p>Joined</p>
-                            <p className="font-medium text-foreground/70">{new Date(u.created_at!).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </>)}</TabsContent>
+          <TabsContent value="users">{activeTab === 'users' && (
+            <AdminUsersTab
+              totalUsers={usersList.length}
+              users={filteredUsers}
+              search={userSearch}
+              onSearchChange={setUserSearch}
+              roleFilter={userRoleFilter}
+              onRoleFilterChange={setUserRoleFilter}
+              roleChanging={roleChanging}
+              onChangeRole={handleChangeRole}
+              onExport={() => exportToCSV(filteredUsers.map(u => ({
+                full_name: u.full_name, email: u.email, mobile: u.mobile, role: u.role, created_at: u.created_at
+              })), 'users')}
+            />
+          )}</TabsContent>
 
           {/* TEACHERS TAB */}
           <TabsContent value="teachers">{activeTab === 'teachers' && (<>
@@ -1307,54 +1210,15 @@ const Admin = () => {
           </TabsContent>
 
           {/* SESSIONS TAB */}
-          <TabsContent value="sessions">{activeTab === 'sessions' && (<>
-            <Card className="border shadow-sm">
-              <CardHeader className="border-b pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <CardTitle className="flex items-center gap-2"><Monitor className="h-5 w-5 text-primary" /> Active Sessions ({sessionsList.length})</CardTitle>
-                  <Button variant="outline" size="sm" onClick={fetchSessionsData} disabled={sessionsLoading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${sessionsLoading ? "animate-spin" : ""}`} /> Refresh
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Monitor all active device sessions. Force-logout suspicious or excess sessions.</p>
-              </CardHeader>
-              <CardContent className="p-0">
-                {sessionsLoading ? (
-                  <div className="flex items-center justify-center py-12"><RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-                ) : sessionsList.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-                    <Monitor className="h-10 w-10" /><p className="font-medium">No active sessions</p><p className="text-sm">Sessions are created when users log in</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {sessionsList.map((s) => (
-                      <div key={s.id} className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors">
-                        <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${s.device_type === "mobile" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                          {s.device_type === "mobile" ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-xs capitalize shrink-0">{s.device_type}</Badge>
-                            <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">{s.user_id}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{s.user_agent ? s.user_agent.substring(0, 70) + "..." : "Unknown browser"}</p>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                            <span>Logged in: {new Date(s.logged_in_at).toLocaleString()}</span>
-                            <span>·</span>
-                            <span>Last active: {new Date(s.last_active_at).toLocaleString()}</span>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" className="shrink-0 text-destructive border-destructive/20 hover:bg-destructive/10"
-                          onClick={() => handleForceLogout(s.id, s.user_id)} disabled={terminatingSession === s.id}>
-                          {terminatingSession === s.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <><LogOut className="h-3 w-3 mr-1" />Logout</>}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>)}</TabsContent>
+          <TabsContent value="sessions">{activeTab === 'sessions' && (
+            <AdminSessionsTab
+              sessions={sessionsList}
+              loading={sessionsLoading}
+              terminatingSession={terminatingSession}
+              onRefresh={fetchSessionsData}
+              onForceLogout={handleForceLogout}
+            />
+          )}</TabsContent>
 
           {/* ENROLLMENTS TAB - Manual Course Access */}
           <TabsContent value="enrollments">{activeTab === 'enrollments' && (
