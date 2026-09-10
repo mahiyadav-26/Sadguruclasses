@@ -62,7 +62,7 @@ function normalizeChatbotSettings(settings: ChatbotSettings): ChatbotSettings {
   return {
     ...settings,
     model: ACTIVE_CHATBOT_MODEL,
-    max_tokens: Math.min(Math.max(Number(settings.max_tokens) || 1000, 200), 2000),
+    max_tokens: Math.min(Math.max(Number(settings.max_tokens) || 2000, 200), 3000),
   };
 }
 
@@ -468,11 +468,11 @@ const ChatbotSettings = () => {
                     <div className="space-y-2">
                       <Label>Max Tokens (Response Length)</Label>
                       <Input
-                        type="number" min="200" max="2000" step="100"
+                        type="number" min="200" max="3000" step="100"
                         value={settings.max_tokens}
                         onChange={e => setSettings({ ...settings, max_tokens: parseInt(e.target.value) })}
                       />
-                      <p className="text-xs text-muted-foreground">1000 = ~750 words response</p>
+                      <p className="text-xs text-muted-foreground">2000 = ~1500 words response (max 3000)</p>
                     </div>
                   </div>
 
