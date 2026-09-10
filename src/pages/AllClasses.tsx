@@ -279,7 +279,7 @@ const AllClasses = () => {
             }}
             className={cn(
                 "flex items-center gap-4 p-4 bg-card border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow",
-                selectedBatch?.id === course.id ? "border-primary ring-1 ring-primary/30" : "border-border",
+                selectedBatch?.id === resource.course_id ? "border-primary ring-1 ring-primary/30" : "border-border",
               )}
           >
             <div className="min-w-[44px] h-[44px] rounded-lg bg-muted flex items-center justify-center">
