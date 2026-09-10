@@ -22,6 +22,32 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [v1.4.0] — 2026-09-10
+
+### Changed
+- `Admin.tsx` 1,296 → 932 lines: overview cards, payments tab, teachers tab,
+  courses tab and the refund dialog extracted to `src/features/admin` (#46).
+- `LessonView.tsx` 2,576 → 2,518 lines: desktop header, locked overlay and the
+  chip strip extracted to `src/features/lesson`, with pure chip helpers in
+  `src/features/lesson/lib/lessonChips.ts` (#47).
+- `AdminUpload.tsx` 1,370 → 1,314 lines: upload type tabs and breadcrumb
+  extracted to `src/features/admin-upload`, with label/icon/colour and
+  breadcrumb rules moved into `uploadRules.ts` (#48).
+
+### Added
+- Unit tests for shared helpers: masking, grade labels, password strength,
+  disposable-email blocking, filename decoding, quiz answer matching, safe
+  storage, file-type detection, download URL rewriting, item priorities and
+  format chips.
+- E2E journeys: lesson completion with progress persistence
+  (`e2e/lesson-completion.spec.ts`) and the admin refund guard rail
+  (`e2e/refund-journey.spec.ts`).
+
+### Internal
+- Coverage ratchet raised: lines 7.5, functions 6.7, branches 7.4, statements 7.2.
+
+---
+
 ## [v1.3.0] — 2026-09-10
 
 ### Changed
