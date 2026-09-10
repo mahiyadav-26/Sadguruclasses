@@ -151,7 +151,7 @@ export const useEnrollments = () => {
         return false;
       }
       if (payload.already) {
-        toast.info("You are already enrolled in this course");
+        toast.info("You are already enrolled in this course", { id: "already-enrolled" });
       } else {
         toast.success("Successfully enrolled in course!");
       }

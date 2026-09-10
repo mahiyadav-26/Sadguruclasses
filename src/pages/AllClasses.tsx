@@ -68,12 +68,10 @@ const AllClasses = () => {
           if (l.course_id) countMap[l.course_id] = (countMap[l.course_id] || 0) + 1;
         });
 
-        let filtered = coursesRes.data || [];
-        if (selectedBatch) {
-          filtered = filtered.filter((c: any) => c.id === selectedBatch.id);
-        }
-
-        const formattedCourses: Course[] = filtered.map((c: any) => ({
+        // All Classes lists EVERY course. It used to filter down to the
+        // selected batch, which made the page look empty/one-row after a
+        // course was picked. Selection now only drives highlighting.
+        const formattedCourses: Course[] = (coursesRes.data || []).map((c: any) => ({
           id: c.id,
           title: c.title,
           grade: c.grade,
@@ -119,12 +117,8 @@ const AllClasses = () => {
 
         const allResources: Resource[] = (lessonsData || []).map(mapLesson);
 
-        if (selectedBatch) {
-          const filtered = (lessonsData || []).filter((l: any) => l.course_id === selectedBatch.id);
-          setResources(filtered.map(mapLesson));
-        } else {
-          setResources(allResources);
-        }
+        // Resources also list across all courses (see note above).
+        setResources(allResources);
       } catch (err) {
         logger.error("Error fetching resources", err);
       } finally {
@@ -235,8 +229,16 @@ const AllClasses = () => {
           return (
             <div
               key={course.id}
-              onClick={() => navigate(`/classes/${course.id}/chapters?from=all-classes`)}
-              className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => {
+                // Picking a course here switches the app-wide active course
+                // too, so Home/My Courses follow the same selection.
+                setSelectedBatch({ id: course.id, title: course.title, grade: course.grade ?? null } as any);
+                navigate(`/classes/${course.id}/chapters?from=all-classes`);
+              }}
+              className={cn(
+                "flex items-center gap-4 p-4 bg-card border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow",
+                selectedBatch?.id === course.id ? "border-primary ring-1 ring-primary/30" : "border-border",
+              )}
             >
               <div className="min-w-[52px] h-[52px] rounded-xl bg-primary/10 flex items-center justify-center">
                 <span className="text-primary font-semibold text-lg">{getSubjectCode(course.title)}</span>
@@ -275,7 +277,10 @@ const AllClasses = () => {
                 toast.error("This resource has no linked course.");
               }
             }}
-            className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            className={cn(
+                "flex items-center gap-4 p-4 bg-card border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow",
+                selectedBatch?.id === course.id ? "border-primary ring-1 ring-primary/30" : "border-border",
+              )}
           >
             <div className="min-w-[44px] h-[44px] rounded-lg bg-muted flex items-center justify-center">
               {RESOURCE_TYPE_ICONS[resource.lecture_type] || <FileText className="h-5 w-5 text-muted-foreground" />}

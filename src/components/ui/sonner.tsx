@@ -17,9 +17,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-center"
       offset={16}
       gap={8}
-      visibleToasts={3}
+      /* One toast at a time: stacked duplicates were covering the course
+         cards on mobile (see screenshot report). */
+      visibleToasts={1}
+      expand={false}
+      closeButton
+      /* Swipe up to dismiss — the strip sits at top-center. */
+      swipeDirections={["top", "left", "right"]}
       toastOptions={{
-        duration: 3500,
+        duration: 2500,
+        dismissible: true,
         classNames: {
           toast: [
             "group toast pointer-events-auto",

@@ -94,7 +94,7 @@ const BuyCourse = () => {
         .maybeSingle();
 
       if (existing) {
-        toast.info("You're already enrolled in this course!");
+        toast.info("You're already enrolled in this course!", { id: "already-enrolled" });
         navigate(`/my-courses`);
         return;
       }
@@ -132,7 +132,7 @@ const BuyCourse = () => {
           .maybeSingle();
 
         if (enrollment) {
-          toast.info("You're already enrolled in this course!");
+          toast.info("You're already enrolled in this course!", { id: "already-enrolled" });
           navigate(`/my-courses`);
           return;
         }
