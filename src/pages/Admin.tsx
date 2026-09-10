@@ -17,6 +17,7 @@ import { paymentTotals } from "@/features/admin/lib/adminStats";
 import { AdminUsersTab } from "@/features/admin/components/AdminUsersTab";
 import { AdminSessionsTab } from "@/features/admin/components/AdminSessionsTab";
 import { AdminOverviewTab } from "@/features/admin/components/AdminOverviewTab";
+import { AdminStatsGrid } from "@/features/admin/components/AdminStatsGrid";
 import { AdminPaymentsTab } from "@/features/admin/components/AdminPaymentsTab";
 import { AdminTeachersTab } from "@/features/admin/components/AdminTeachersTab";
 import { AdminCoursesTab } from "@/features/admin/components/AdminCoursesTab";
@@ -629,6 +630,9 @@ const Admin = () => {
           </Button>
         </div>
 
+        {/* STATS — pinned above the tab strip so key numbers stay visible. */}
+        <AdminStatsGrid stats={stats} onSelectTab={setActiveTab} />
+
         {/* TABS */}
         {/*
           PERF — Heavy <TabsContent> bodies (payments / users / teachers /
@@ -691,7 +695,6 @@ const Admin = () => {
           {/* OVERVIEW TAB */}
           <TabsContent value="overview">{activeTab === 'overview' && (
             <AdminOverviewTab
-              stats={stats}
               quickActions={quickActions}
               onSelectTab={setActiveTab}
               onNavigate={navigate}

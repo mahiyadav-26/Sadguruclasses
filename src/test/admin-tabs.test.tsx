@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BookOpen, Users } from "lucide-react";
 import { AdminOverviewTab } from "@/features/admin/components/AdminOverviewTab";
+import { AdminStatsGrid } from "@/features/admin/components/AdminStatsGrid";
 import { AdminPaymentsTab } from "@/features/admin/components/AdminPaymentsTab";
 import { AdminTeachersTab } from "@/features/admin/components/AdminTeachersTab";
 import { AdminCoursesTab } from "@/features/admin/components/AdminCoursesTab";
@@ -22,16 +23,16 @@ describe("AdminOverviewTab", () => {
     { label: "Live Classes", description: "Go live", icon: BookOpen, tab: "live", route: "/admin/live" },
   ];
 
-  it("renders stats and quick actions", () => {
-    render(<AdminOverviewTab stats={stats} quickActions={quickActions} onSelectTab={vi.fn()} onNavigate={vi.fn()} />);
-    expect(screen.getByText("Total Students")).toBeTruthy();
-    expect(screen.getByText("42")).toBeTruthy();
+  it("renders quick actions", () => {
+    render(<AdminOverviewTab quickActions={quickActions} onSelectTab={vi.fn()} onNavigate={vi.fn()} />);
     expect(screen.getByText("Courses")).toBeTruthy();
+    expect(screen.getByText("Live Classes")).toBeTruthy();
   });
 
-  it("selects a tab when a stat card is clicked", () => {
+  it("renders stats and selects a tab when a stat card is clicked", () => {
     const onSelectTab = vi.fn();
-    render(<AdminOverviewTab stats={stats} quickActions={quickActions} onSelectTab={onSelectTab} onNavigate={vi.fn()} />);
+    render(<AdminStatsGrid stats={stats} onSelectTab={onSelectTab} />);
+    expect(screen.getByText("42")).toBeTruthy();
     fireEvent.click(screen.getByText("Total Students"));
     expect(onSelectTab).toHaveBeenCalledWith("users");
   });
@@ -39,7 +40,7 @@ describe("AdminOverviewTab", () => {
   it("prefers the route over the tab for quick actions that have both", () => {
     const onNavigate = vi.fn();
     const onSelectTab = vi.fn();
-    render(<AdminOverviewTab stats={stats} quickActions={quickActions} onSelectTab={onSelectTab} onNavigate={onNavigate} />);
+    render(<AdminOverviewTab quickActions={quickActions} onSelectTab={onSelectTab} onNavigate={onNavigate} />);
     fireEvent.click(screen.getByText("Live Classes"));
     expect(onNavigate).toHaveBeenCalledWith("/admin/live");
     expect(onSelectTab).not.toHaveBeenCalled();

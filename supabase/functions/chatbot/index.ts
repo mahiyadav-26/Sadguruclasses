@@ -15,7 +15,7 @@ const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CHATBOT_AI_MODEL = DEFAULT_CHAT_MODEL;
-const CHATBOT_MAX_TOKENS = 900;
+const CHATBOT_MAX_TOKENS = 3000;
 const CONTEXT_BUDGET_MS = 1800;
 const WEB_FALLBACK_BUDGET_MS = 2500;
 
@@ -33,7 +33,7 @@ function resolveChatbotModel(rawModel?: string | null): string {
 
 function resolveMaxTokens(rawMaxTokens?: number | null): number {
   const value = Number(rawMaxTokens);
-  if (!Number.isFinite(value) || value <= 0) return 1000;
+  if (!Number.isFinite(value) || value <= 0) return 2000;
   return Math.min(Math.floor(value), CHATBOT_MAX_TOKENS);
 }
 
