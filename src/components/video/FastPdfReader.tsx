@@ -31,6 +31,7 @@ import { friendlyPdfErrorMessage } from "../../lib/pdfErrorMessage";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlayerReaderControls } from "../../hooks/usePlayerReaderControls";
 import ReaderZoomControls from "../library/reader/ReaderZoomControls";
+import { validatePdfBlob } from "../../lib/validatePdfBlob";
 
 // Guard worker assignment for SSR / non-browser execution.
 
@@ -354,6 +355,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     const lastProgressAtRef = useRef<number>(Date.now());
     const readyFiredRef = useRef(false);
     const fallbackAbortRef = useRef<AbortController | null>(null);
+    const loadGenerationRef = useRef(0);
     const archiveStallRetriesRef = useRef(0);
 
     const [retryNonce, setRetryNonce] = useState(0);
@@ -546,6 +548,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     }, [data, resolving, route, src]);
 
     useEffect(() => {
+      loadGenerationRef.current += 1;
       setNumPages(0);
       setError(null);
       setProgress(null);
@@ -687,6 +690,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       fallbackAbortRef.current?.abort();
       const controller = new AbortController();
       fallbackAbortRef.current = controller;
+      const generation = loadGenerationRef.current;
       // Heartbeat: byte-fallback is a single fetch()+arrayBuffer() await so it
       // emits no measured `pdf-progress` events. Without a heartbeat
       // the DocumentReader's 25s ERROR_TIMEOUT_MS fires mid-download on large
@@ -709,7 +713,13 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
         const blob = isResolvableStorageViewerUrl(src)
           ? await resolveStorageBytes(src, controller.signal)
           : await fetchPdfBlobWithRetry(src, controller.signal);
+        await validatePdfBlob(blob);
         const bytes = new Uint8Array(await blob.arrayBuffer());
+        if (
+          controller.signal.aborted ||
+          fallbackAbortRef.current !== controller ||
+          loadGenerationRef.current !== generation
+        ) return false;
         setError(null);
         setFallbackData(bytes);
         traceReader(route, "fallback", "byte-fallback-success", { bytes: bytes.byteLength });
@@ -717,7 +727,11 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
         return true;
       } catch (fallbackErr) {
         const msg = (fallbackErr as Error)?.message || "";
-        if (isAbortLike(fallbackErr)) {
+        if (
+          isAbortLike(fallbackErr) ||
+          fallbackAbortRef.current !== controller ||
+          loadGenerationRef.current !== generation
+        ) {
           addBreadcrumb("pdf", "byte-fallback:aborted", { url: url.slice(0, 80) });
           traceReader(route, "unmounted", "byte-fallback-aborted", { message: msg });
           return false;
@@ -733,10 +747,29 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
         return false;
       } finally {
         window.clearInterval(heartbeat);
-        if (fallbackAbortRef.current === controller) fallbackAbortRef.current = null;
-        setFallbackLoading(false);
+        if (fallbackAbortRef.current === controller) {
+          fallbackAbortRef.current = null;
+          setFallbackLoading(false);
+        }
       }
     }, [data, fallbackData, fetchPdfBlobWithRetry, friendlyPdfError, route, src, url]);
+
+    const restartLoading = useCallback(() => {
+      pdfLog("retry", { url });
+      loadGenerationRef.current += 1;
+      fallbackAbortRef.current?.abort();
+      fallbackAbortRef.current = null;
+      triedByteFallback.current = false;
+      sawFirstByte.current = false;
+      readyFiredRef.current = false;
+      lastProgressAtRef.current = Date.now();
+      setError(null);
+      setProgress(null);
+      setNumPages(0);
+      setFallbackData(null);
+      setFallbackLoading(false);
+      setRetryNonce((n) => n + 1);
+    }, [url]);
 
     const onLoadError = useCallback(
       async (err: Error) => {
@@ -979,13 +1012,11 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     useEffect(() => {
       if (!error) return;
       const onOnline = () => {
-        setError(null);
-        triedByteFallback.current = false;
-        setRetryNonce((n) => n + 1);
+        restartLoading();
       };
       window.addEventListener("online", onOnline);
       return () => window.removeEventListener("online", onOnline);
-    }, [error]);
+    }, [error, restartLoading]);
 
     if (resolving || (fallbackLoading && !file)) {
       return (
@@ -1011,7 +1042,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
             </button>
             <button
               type="button"
-              onClick={() => { pdfLog("retry", { url }); setRetryNonce((n) => n + 1); }}
+              onClick={restartLoading}
               className="inline-flex items-center gap-1 text-primary underline"
             >
               Retry
@@ -1050,13 +1081,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
             </button>
             <button
               type="button"
-              onClick={() => {
-                pdfLog("retry", { url });
-                setError(null);
-                triedByteFallback.current = false;
-                if (isArchiveSource(src)) setRetryNonce((n) => n + 1);
-                else void fetchWholeFileFallback();
-              }}
+              onClick={restartLoading}
               className="inline-flex items-center gap-1 text-primary underline"
             >
               Retry
@@ -1137,27 +1162,10 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
               </div>
             }
 
-            error={
-              <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-destructive">
-                <p>Could not load PDF.</p>
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => { pdfLog("download", { url }); void downloadFile(url); }}
-                    className="inline-flex items-center gap-1 text-primary underline"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Download
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { pdfLog("retry", { url }); setError(null); }}
-                    className="inline-flex items-center gap-1 text-primary underline"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            }
+            // FastPdfReader owns recovery and terminal-error rendering. Letting
+            // React-PDF render its internal error here races with onLoadError:
+            // users saw “Could not load PDF” while byte recovery was healthy.
+            error={null}
             className=""
           >
             <div ref={pagesWrapperRef} style={{ transformOrigin: "top center" }}>
