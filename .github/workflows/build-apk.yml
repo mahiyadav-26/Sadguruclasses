@@ -106,7 +106,8 @@ jobs:
             echo "VERSION=${VERSION}" >> $GITHUB_ENV
             echo "IS_MANUAL=true" >> $GITHUB_ENV
           else
-            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+            VERSION="${{ github.ref_name }}"
+            echo "VERSION=${VERSION}" >> $GITHUB_ENV
             echo "IS_MANUAL=false" >> $GITHUB_ENV
           fi
           # Numeric versionName for Android (consumed by build.gradle).
@@ -123,6 +124,11 @@ jobs:
             APP_VERSION_NAME="1.0.${GITHUB_RUN_NUMBER:-0}"
           fi
           echo "APP_VERSION_NAME=${APP_VERSION_NAME}" >> $GITHUB_ENV
+          # Artifact names and file names cannot contain "/" (branch names
+          # like fix/upi-native do). Sanitize once and use SAFE_VERSION
+          # wherever the value lands on a filesystem or an artifact `name:`.
+          SAFE_VERSION="$(printf '%s' "${VERSION}" | tr '/\\:<>|*?"' '-')"
+          echo "SAFE_VERSION=${SAFE_VERSION}" >> $GITHUB_ENV
           # Guard: on a real vX.Y.Z tag, versionName MUST equal the tag.
           if [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ && "v$APP_VERSION_NAME" != "$VERSION" ]]; then
             echo "❌ tag/versionName mismatch: tag=$VERSION, versionName=$APP_VERSION_NAME"
@@ -945,7 +951,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
-          name: size-history-${{ env.VERSION }}
+          name: size-history-${{ env.SAFE_VERSION }}
           path: size-history/
           retention-days: 1
           if-no-files-found: ignore
@@ -1020,14 +1026,14 @@ jobs:
 
       - name: 🏷️ Rename APK with version tag
         run: |
-          cp "$APK_PATH" "SadguruCoachingClasses-${{ env.VERSION }}.apk"
-          echo "APK_FILE=SadguruCoachingClasses-${{ env.VERSION }}.apk" >> $GITHUB_ENV
+          cp "$APK_PATH" "SadguruCoachingClasses-${{ env.SAFE_VERSION }}.apk"
+          echo "APK_FILE=SadguruCoachingClasses-${{ env.SAFE_VERSION }}.apk" >> $GITHUB_ENV
 
       - name: 🏷️ Create fixed-name APK copy (for static URL)
         run: |
           # Canonical fixed-name asset consumed by the /install page:
           # .../releases/latest/download/Sadguruclasses.apk
-          cp "SadguruCoachingClasses-${{ env.VERSION }}.apk" "Sadguruclasses.apk"
+          cp "SadguruCoachingClasses-${{ env.SAFE_VERSION }}.apk" "Sadguruclasses.apk"
           echo "APK_FIXED=Sadguruclasses.apk" >> $GITHUB_ENV
 
 
@@ -1042,7 +1048,7 @@ jobs:
             echo "HAS_AAB=false" >> $GITHUB_ENV
             exit 0
           fi
-          AAB_FILE="SadguruCoachingClasses-${{ env.VERSION }}.aab"
+          AAB_FILE="SadguruCoachingClasses-${{ env.SAFE_VERSION }}.aab"
           cp "$AAB_SRC" "$AAB_FILE"
           SIZE=$(du -sh "$AAB_FILE" | cut -f1)
           echo "AAB_FILE=$AAB_FILE" >> $GITHUB_ENV
@@ -1053,7 +1059,7 @@ jobs:
       - name: 📤 Upload APK artifact
         uses: actions/upload-artifact@v6
         with:
-          name: sadguru-apk-${{ env.VERSION }}
+          name: sadguru-apk-${{ env.SAFE_VERSION }}
           path: ${{ env.APK_FILE }}
           # Retention slashed 30d→1d. The APK is also attached to the GitHub
           # Release below (permanent, does NOT count against Actions storage
@@ -1068,7 +1074,7 @@ jobs:
         if: env.HAS_AAB == 'true'
         uses: actions/upload-artifact@v6
         with:
-          name: sadguru-aab-${{ env.VERSION }}
+          name: sadguru-aab-${{ env.SAFE_VERSION }}
           path: ${{ env.AAB_FILE }}
           retention-days: 1
           compression-level: 0
@@ -1109,7 +1115,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: android-build-logs-${{ env.VERSION }}
+          name: android-build-logs-${{ env.SAFE_VERSION }}
           # Gradle raw log + release-sha256.txt (few hundred KB total). Large
           # build/reports paths are intentionally NOT included — they used to
           # be 100+ MB per failed run and burned the artifact quota.
@@ -1124,7 +1130,7 @@ jobs:
         if: failure() && env.APK_PATH != ''
         uses: actions/upload-artifact@v6
         with:
-          name: sadguru-apk-failed-${{ env.VERSION }}
+          name: sadguru-apk-failed-${{ env.SAFE_VERSION }}
           path: ${{ env.APK_PATH }}
           retention-days: 1
           compression-level: 0
