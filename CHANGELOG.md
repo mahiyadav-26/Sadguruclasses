@@ -22,6 +22,36 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [v1.4.2] — 2026-09-11
+
+### Added
+- **Native exit-reason reporting (no `adb` required).** New `AppExitInfo`
+  Android plugin reads `ActivityManager.getHistoricalProcessExitReasons`
+  (API 30+); `src/lib/nativeExitInfo.ts` reports the newest unseen record once
+  per cold boot. Low-memory kills, native crashes and ANRs now reach Sentry
+  with RSS/PSS and importance; normal user exits stay breadcrumb-only.
+- Crash shield: heap warnings at 80% of the device's real JS heap limit,
+  throttled `longtask` breadcrumbs (400 ms+), and `trackBlobUrl` /
+  `releaseBlobUrl` for revocable large PDF/video blob URLs.
+
+### Changed
+- **Full-screen PDF fits the device.** `computeFitPageSize` keeps the
+  edge-to-edge width fit in portrait and caps width by visible height in
+  landscape, so a rotated phone shows a whole page instead of a sliver.
+  `FastPdfReader` refits on resize, `visualViewport`, `orientationchange` and
+  `screen.orientation` change.
+- **Auto-scroll survives rotation** — `useAutoScroll` resyncs its scroll
+  position against the new layout instead of jumping back or parking at the
+  bottom.
+- Full-screen player heights use `dvh` fallbacks for gesture-navigation
+  devices.
+
+### Fixed
+- APK workflow: branch names containing `/` no longer break artifact upload or
+  the APK copy step (`SAFE_VERSION`).
+
+---
+
 ## [v1.4.1] — 2026-09-10
 
 ### Added

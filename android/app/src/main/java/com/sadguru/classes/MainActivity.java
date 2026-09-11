@@ -32,6 +32,9 @@ public class MainActivity extends BridgeActivity {
         // raw Intent and therefore never showed UPI app tiles. Capacitor requires
         // registerPlugin() to run BEFORE super.onCreate().
         registerPlugin(RazorpayNativePlugin.class);
+        // Reports why the process died last time (low memory / native crash /
+        // ANR) so triage no longer needs `adb logcat` on a cabled device.
+        registerPlugin(AppExitInfoPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Warm up Razorpay so the payment-method list (including installed UPI

@@ -367,6 +367,11 @@ export function initCrashShield(): void {
     installMemoryPressureHandler();
     installMemoryMonitor();
     installLongTaskObserver();
+    // Why did the process die last time? Android knows; ask it once per boot
+    // so native-side kills (OOM/ANR/native crash) reach Sentry without adb.
+    void import("./nativeExitInfo")
+      .then((m) => m.reportLastNativeExit())
+      .catch(() => { /* diagnostics must never break boot */ });
     // Boot-time sweep: if the previous session left localStorage near quota,
     // trim now before any persister tries to write and stalls the main thread.
     try { sweepLocalStorage(); } catch { /* noop */ }

@@ -16,7 +16,7 @@ Supabase: `Mahima Online Academy` (`xvlvrbpqxqqqaeihofod`), 85 public tables
 | 5 | razorpay-payments | 4.5/5 | Correct non-negotiables (paise, server-side verify, webhook idempotency, platform split). Reuse-don't-reimplement rule is the right default |
 | 6 | sentry-triage | 4/5 | Good bucket taxonomy and the "UNMAPPED, never fabricate" rule is excellent. Assumes a breadcrumb export exists |
 | 7 | mobile-view-expert | 4/5 | Concrete patterns library (safe-area nav, header grid, iOS zoom fix). Screenshot-verification requirement is strong |
-| 8 | app-crash-shield | 5.5/5 | Now fully usable without `adb`: device-relative heap-ratio alerts, long-task breadcrumbs, tracked blob-URL release and pressure-triggered trimming give the same evidence from Sentry alone |
+| 8 | app-crash-shield | 6/5 | No `adb` dependency left: device-relative heap-ratio alerts, long-task breadcrumbs, tracked blob-URL release, **and** Android's own process-death reason (low memory / native crash / ANR) forwarded to Sentry on the next boot |
 | 9 | history-observer | 3.5/5 | Useful loose-end catcher; honest about tool calls not being indexed. Overlaps heavily with a normal audit |
 | 10 | capacitor-bun-apk-build (duplicate) | — | Same skill listed twice in the request; no separate score |
 
@@ -46,7 +46,18 @@ history-observer ── standalone, read-only, no code authority
   - heap warnings fire at 80% of *this device's* JS heap limit, not a fixed 400 MB (budget phones OOM below that ceiling), and proactively trigger cache trimming;
   - `PerformanceObserver("longtask")` leaves throttled breadcrumbs for 400 ms+ main-thread blocks, so a freeze report shows what preceded the reload;
   - `trackBlobUrl` / `releaseBlobUrl` make large PDF/video blob URLs revocable under memory pressure.
-  Rated 5.5 because triage is now possible end-to-end from Sentry alone; a real-device `adb` run remains the only way to confirm native-side OOM kills.
+  - **(2026-09-11, second pass) the last `adb`-only gap is closed.** Native
+    process deaths are no longer invisible to the app: `AppExitInfoPlugin`
+    (Android `ActivityManager.getHistoricalProcessExitReasons`, API 30+) is
+    read once per cold boot by `src/lib/nativeExitInfo.ts`, de-duplicated by
+    timestamp, and abnormal reasons (`low_memory`, `crash`, `crash_native`,
+    `anr`, `excessive_resource_usage`, `initialization_failure`, `signaled`)
+    are captured to Sentry with RSS/PSS and importance; ordinary user-initiated
+    exits are recorded as a breadcrumb only, so triage is not flooded.
+    Web and Android < 30 resolve `supported: false` and no-op.
+  Rated 6/5: OOM kills, ANRs and native crashes can now be confirmed from
+  Sentry alone. A cabled `adb logcat` run is an optional deep-dive, not a
+  prerequisite for triage.
 
 ---
 
@@ -134,14 +145,14 @@ Reviewed previously: all check admin role, enrollment, or `auth.uid()`; none cal
 | Performance | 9.0 |
 | Payments | 9.0 |
 | Build pipeline | 9.0 |
-| Crash resilience | 8.0 |
+| Crash resilience | 9.0 |
 | Architecture / maintainability | 7.0 |
 | Mobile polish | 7.0 |
 | Test & lint discipline | 5.5 |
 
-**App overall: 8.0 / 10** — production-solid on security, data and delivery; the gap is test coverage, lint debt and Android touch polish.
+**App overall: 8.2 / 10** — production-solid on security, data and delivery; the gap is test coverage, lint debt and Android touch polish.
 
-**Skills set overall: 4.4 / 5**
+**Skills set overall: 4.5 / 5**
 
 ## Top 5 actions
 
