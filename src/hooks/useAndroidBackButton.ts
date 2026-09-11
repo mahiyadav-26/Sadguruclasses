@@ -136,7 +136,7 @@ export const useAndroidBackButton = () => {
 
   // The `latest` module-level object intentionally avoids the dependency
   // list — we want ONE listener for the app lifetime, not one per render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => {
     // Android-only guard. `isNative()` was wrong — it returns true on iOS too,
     // which would let `App.exitApp()` fire later in the chain. Apple rejects
