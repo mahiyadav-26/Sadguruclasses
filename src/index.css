@@ -510,8 +510,13 @@ label[for] {
 .mahima-ghost-player:-webkit-full-screen {
   width: 100vw !important;
   height: 100vh !important;
+  /* Dynamic viewport units: Android WebView reports 100vh including the
+     system nav bar, which pushed controls off-screen on gesture-nav devices.
+     dvh follows the real visible area on every device. */
+  height: 100dvh !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
+  max-height: 100dvh !important;
   background: #000 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -530,6 +535,7 @@ label[for] {
   width: 100% !important;
   height: auto !important;
   max-height: calc(100vh - 70px) !important;
+  max-height: calc(100dvh - 70px) !important;
   min-height: 0 !important;
   display: flex !important;
   align-items: center !important;
@@ -595,6 +601,7 @@ label[for] {
 .white-label-player:-webkit-full-screen {
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   background: #000 !important;
 }
 
@@ -788,6 +795,7 @@ label[for] {
   z-index: 9999 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
 }
 
 /* Inner video container always fills its parent */

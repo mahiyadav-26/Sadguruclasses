@@ -140,7 +140,7 @@ const isAbortLike = (err: unknown): boolean => {
 };
 
 
-import { computeFitPageWidth } from "../../lib/pdfFit";
+import { computeFitPageSize, computeFitPageWidth } from "../../lib/pdfFit";
 export { computeFitPageWidth };
 import { measureContentBox, fitToContent, measureInkBox, fitToMargins, type ContentBox, type ContentFit } from "../../lib/pdfContentBox";
 
@@ -170,6 +170,7 @@ function LazyPage({
   smartFit = false,
   trimMargins = true,
   releaseWhenDistant = false,
+  onRatio,
 }: {
   pageNumber: number;
   width: number;
@@ -180,6 +181,8 @@ function LazyPage({
   /** Crop the page's own printed side margins so it fills the screen width. */
   trimMargins?: boolean;
   releaseWhenDistant?: boolean;
+  /** Reports the page's height/width ratio so the reader can fit the screen. */
+  onRatio?: (ratio: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [render, setRender] = useState(pageNumber <= 2);
@@ -202,7 +205,11 @@ function LazyPage({
     (page: unknown) => {
       const loadedPage = page as { getViewport: (options: { scale: number }) => { width: number; height: number } };
       const viewport = loadedPage.getViewport({ scale: 1 });
-      if (viewport.width > 0 && viewport.height > 0) setPageRatio(viewport.height / viewport.width);
+      if (viewport.width > 0 && viewport.height > 0) {
+        const ratio = viewport.height / viewport.width;
+        setPageRatio(ratio);
+        onRatio?.(ratio);
+      }
       const p = page as Parameters<typeof measureContentBox>[0];
       if (smartFit) {
         void (async () => {
@@ -227,7 +234,7 @@ function LazyPage({
         if (next) setFit(next);
       })();
     },
-    [smartFit, trimMargins, width]
+    [smartFit, trimMargins, width, onRatio]
   );
 
   useEffect(() => {
@@ -359,8 +366,15 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
     // (avoids the brief 800px overshoot that clipped the page on mobile).
     const [pageWidth, setPageWidth] = useState<number>(() => {
       if (typeof window === "undefined") return 800;
-      return computeFitPageWidth(window.visualViewport?.width ?? window.innerWidth, undefined, 0);
+      return computeFitPageSize({
+        viewportWidth: window.visualViewport?.width ?? window.innerWidth,
+        viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+        gutter: 0,
+      });
     });
+    // Aspect ratio of page 1 — lets the fit switch to height-bound sizing in
+    // landscape so a whole page stays visible on any device.
+    const [docRatio, setDocRatio] = useState<number | undefined>(undefined);
 
     const { readerZoom: showZoomControls } = usePlayerReaderControls();
 
@@ -463,19 +477,33 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
       if (!el) return;
       const update = () => {
         const visualWidth = window.visualViewport?.width ?? window.innerWidth;
-        setPageWidth(computeFitPageWidth(visualWidth, el.clientWidth, 0));
+        const visualHeight = window.visualViewport?.height ?? window.innerHeight;
+        setPageWidth(
+          computeFitPageSize({
+            viewportWidth: visualWidth,
+            viewportHeight: visualHeight,
+            containerWidth: el.clientWidth,
+            pageRatio: docRatio,
+            gutter: 0,
+          })
+        );
       };
       update();
       const ro = new ResizeObserver(update);
       ro.observe(el);
       window.visualViewport?.addEventListener("resize", update);
+      window.addEventListener("resize", update);
       window.addEventListener("orientationchange", update);
+      const so = (screen as unknown as { orientation?: { addEventListener?: (t: string, h: () => void) => void; removeEventListener?: (t: string, h: () => void) => void } }).orientation;
+      so?.addEventListener?.("change", update);
       return () => {
         ro.disconnect();
         window.visualViewport?.removeEventListener("resize", update);
+        window.removeEventListener("resize", update);
         window.removeEventListener("orientationchange", update);
+        so?.removeEventListener?.("change", update);
       };
-    }, []);
+    }, [docRatio]);
 
 
     // IMPORTANT: clone the Uint8Array before handing it to pdf.js. The worker
@@ -1142,6 +1170,7 @@ const FastPdfReader = forwardRef<FastPdfReaderHandle, Props>(
                     smartFit={isSheetsSource(url)}
                     trimMargins={!isSheetsSource(url)}
                     releaseWhenDistant={isArchiveSource(src)}
+                    onRatio={i === 0 ? setDocRatio : undefined}
                   />
                 ))}
             </div>

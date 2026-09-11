@@ -744,6 +744,41 @@ export function useAutoScroll({ targetRef, iframeRef, docKey }: AutoScrollOption
 
   useEffect(() => () => stop(), [stop]);
 
+  // Rotation / window-resize resync.
+  // The engine owns the scroll position as a float (`posRef`). After a device
+  // rotation the reader re-lays out at a new page width, so the element's real
+  // `scrollTop` no longer matches our float — the next frame would yank the
+  // page back to the pre-rotation offset (or park it at the bottom and
+  // auto-stop). Re-read the truth and keep the same relative position.
+  useEffect(() => {
+    const resync = () => {
+      const el = resolveTarget();
+      if (!el) return;
+      const before = el.scrollHeight - el.clientHeight;
+      const frac = before > 0 ? posRef.current / before : 0;
+      // Two frames: one for the browser's own layout, one for the reader's
+      // width recompute (ResizeObserver -> React state -> re-render).
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const target = resolveTarget();
+          if (!target) return;
+          const after = target.scrollHeight - target.clientHeight;
+          const next = after > 0 ? Math.min(after, Math.round(frac * after)) : 0;
+          if (activeRef.current) target.scrollTop = next;
+          posRef.current = activeRef.current ? next : target.scrollTop;
+          lastTsRef.current = 0;
+        });
+      });
+    };
+    window.addEventListener("orientationchange", resync);
+    window.addEventListener("resize", resync);
+    return () => {
+      window.removeEventListener("orientationchange", resync);
+      window.removeEventListener("resize", resync);
+    };
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
+
   // Auto-resume from per-doc localStorage flag (Downloads / Local Storage PDFs).
   // Guarded by a 300ms grace so the target/iframe ref has time to attach.
   const resumedRef = useRef(false);
