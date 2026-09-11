@@ -290,7 +290,9 @@ body[data-lovable-dialog-open="true"] [data-floating-fab="true"] {
   }
 
   /* Marquee that pauses on hover; respects reduced motion */
-  .pause-on-hover:hover { animation-play-state: paused; }
+  @media (hover: hover) and (pointer: fine) {
+    .pause-on-hover:hover { animation-play-state: paused; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-in-up,
     .animate-marquee { animation: none !important; }
@@ -629,8 +631,10 @@ label[for] {
   transition: transform 0.3s ease;
 }
 
-.mahima-play-button:hover {
-  transform: scale(1.1);
+@media (hover: hover) and (pointer: fine) {
+  .mahima-play-button:hover {
+    transform: scale(1.1);
+  }
 }
 
 /* Pulsing border animation for last 10 seconds of video */
@@ -681,9 +685,11 @@ label[for] {
   .card-hover {
     transition: all 200ms ease-out;
   }
-  .card-hover:hover {
-    transform: translateY(-0.25rem);
-    box-shadow: var(--shadow-lg);
+  @media (hover: hover) and (pointer: fine) {
+    .card-hover:hover {
+      transform: translateY(-0.25rem);
+      box-shadow: var(--shadow-lg);
+    }
   }
 
   /* Consistent button primary gradient */
@@ -695,9 +701,11 @@ label[for] {
     padding: 0.625rem 1.5rem;
     transition: all 200ms ease-out;
   }
-  .btn-primary-gradient:hover {
-    opacity: 0.9;
-    box-shadow: var(--shadow-md);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary-gradient:hover {
+      opacity: 0.9;
+      box-shadow: var(--shadow-md);
+    }
   }
   .btn-primary-gradient:active {
     transform: scale(0.95);
@@ -729,10 +737,12 @@ label[for] {
     box-shadow: var(--shadow-sm);
     transition: all 200ms ease-out;
   }
-  .course-card:hover {
-    transform: translateY(-0.25rem);
-    border-color: hsl(var(--primary) / 0.2);
-    box-shadow: var(--shadow-md);
+  @media (hover: hover) and (pointer: fine) {
+    .course-card:hover {
+      transform: translateY(-0.25rem);
+      border-color: hsl(var(--primary) / 0.2);
+      box-shadow: var(--shadow-md);
+    }
   }
 
   /* Nav shadow on scroll */

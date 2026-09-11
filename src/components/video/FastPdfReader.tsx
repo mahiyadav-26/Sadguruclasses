@@ -22,6 +22,9 @@ import { downloadFile } from "../../utils/fileUtils";
 import { addBreadcrumb, captureException } from "../../lib/sentry";
 import { isResolvableStorageViewerUrl, resolveStorageBytes } from "@/lib/native/naveenStoragePdf";
 import { isKnownNonPdfWebUrl } from "../../lib/detectFileType";
+// Last-resort "open elsewhere" escape hatch, shown only after in-app
+// rendering has already failed. Not a default path.
+// eslint-disable-next-line no-restricted-imports
 import { openExternal } from "../../lib/native/browser";
 import { requestPdfViaNativeHttp } from "../../lib/nativePdfHttp";
 import { friendlyPdfErrorMessage } from "../../lib/pdfErrorMessage";

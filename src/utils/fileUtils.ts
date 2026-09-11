@@ -89,7 +89,7 @@ const isNativePlatform = (): boolean => {
   }
 };
 
-const safeName = (name: string) => (name || "document.pdf").replace(/[\/\\?%*:|"<>]/g, "_").trim();
+const safeName = (name: string) => (name || "document.pdf").replace(/[/\\?%*:|"<>]/g, "_").trim();
 
 const yieldToUi = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
