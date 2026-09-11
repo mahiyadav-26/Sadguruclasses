@@ -1237,7 +1237,7 @@ const LessonView = () => {
   const handleChipSelect = useCallback((id: string) => {
     const chip = lessonChips.find((c) => c.id === id);
     if (chip?.action === "link") {
-      if (chip.url) window.open(chip.url, "_blank", "noopener,noreferrer");
+      if (chip.url) void openResource({ url: chip.url });
       return;
     }
     setActiveChip(id);
