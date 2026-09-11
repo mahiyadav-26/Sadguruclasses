@@ -206,7 +206,7 @@ export const downloadFile = async (
     let loaded = 0;
     // Emit an initial 0% so the UI shows the bar immediately.
     onProgress({ loaded: 0, total, percent: 0 });
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       if (signal?.aborted) { try { await reader.cancel(); } catch {} throwIfAborted(); }
       const { done, value } = await reader.read();

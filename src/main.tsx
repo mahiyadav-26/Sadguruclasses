@@ -75,7 +75,7 @@ try {
             // main chunk — reuse it directly (avoids Rolldown's "ineffective
             // dynamic import" warning that comes from importing the same
             // module both ways).
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
+             
             const filter = (globalThis as unknown as { __nb_isExpectedConsoleNoise?: (args: unknown[]) => boolean }).__nb_isExpectedConsoleNoise;
             const w = window as unknown as { __nb_eruda_filter_installed?: boolean };
             if (filter && !w.__nb_eruda_filter_installed) {
@@ -91,7 +91,7 @@ try {
           // Replay buffered entries so admin sees pre-init boot logs.
           original.log?.(`[admin] Eruda early-boot loaded — replaying ${buffer.length} buffered log(s).`);
           buffer.forEach((e) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             original[e.level]?.(`[t+${e.t}]`, ...e.args);
           });
         }
@@ -112,7 +112,7 @@ try {
     const PREVIEW_NOISE_RE = /^Unknown message type:\s*(SET_SAFE_AREA|SET_KEYBOARD|SET_STATUS_BAR)\b/;
     for (const method of ["warn", "log", "info", "error"] as const) {
       const orig = (console[method] as (...a: unknown[]) => void).bind(console);
-      // eslint-disable-next-line no-console
+       
       console[method] = (...args: unknown[]) => {
         try {
           const first = typeof args[0] === "string" ? (args[0] as string) : "";
@@ -162,7 +162,7 @@ if (ERUDA_ALLOWED && import.meta.env.VITE_ENABLE_ERUDA === "true") {
       const btn = document.querySelector(".eruda-entry-btn") as HTMLElement | null;
       if (btn) btn.setAttribute("aria-label", "QA DevTools");
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
+         
         console.log("[QA] Eruda DevTools loaded — tap the floating button.");
       }
     } catch { /* noop */ }
