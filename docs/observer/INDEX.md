@@ -25,3 +25,4 @@
 - [2026-07-20 human tone + visual audit](2026-07-20-human-tone-audit.md) — 3.4/5; 8 HIGH (toast filler, Sparkles mascot in 8 places, "No X yet" empty states in 14 pages); ProfileAvatar blink + My Storage instant-refresh shipped this turn.
 - [Human Tone Phase 2](./2026-07-20-human-tone-phase2.md) — audit + ship
 - [2026-07-20 Screen protection matrix](./2026-07-20-screen-protection-matrix.md) — admin allowed everywhere, student blocked only on LessonView — PASS
+- [2026-09-11 Skills review + app rating](./2026-09-11-skills-and-app-rating.md) — skills set 4.4/5, app 8.0/10; typecheck+build+620 tests green, 0 RLS gaps; open: coverage 7.5%, 69 lint errors, sticky hover on Android.
