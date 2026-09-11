@@ -33,7 +33,7 @@ export class PlayerErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // eslint-disable-next-line no-console
+     
     console.error("[PlayerErrorBoundary]", this.props.context ?? "", error, info.componentStack);
     try {
       window.dispatchEvent(

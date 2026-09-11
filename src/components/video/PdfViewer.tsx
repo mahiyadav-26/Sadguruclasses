@@ -154,7 +154,7 @@ const PdfViewerInner = forwardRef<PdfViewerHandle, PdfViewerProps>(
       traceReader(isDrive ? "drive" : isGoogleDocs(effectiveUrl) ? "docs" : "iframe", "loading", "iframe-start", { embedUrl });
       try {
         if (typeof localStorage !== "undefined" && localStorage.getItem("nb_pdf_debug") === "1") {
-          // eslint-disable-next-line no-console
+           
           console.info("[PdfViewer] iframe branch", { isDrive, isHtmlViewer, embedUrl });
         }
       } catch {}

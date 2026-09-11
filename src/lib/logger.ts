@@ -43,26 +43,26 @@ export const logger = {
    * Sentry issue grouping.
    */
   error(message: string, error?: unknown, context?: Context): void {
-    // eslint-disable-next-line no-console
+     
     console.error(`[error] ${message}`, error ?? "", context ?? "");
     const err = error !== undefined ? toError(error) : new Error(message);
     captureException(err, { message, ...(context ?? {}) });
   },
 
   warn(message: string, context?: Context): void {
-    // eslint-disable-next-line no-console
+     
     console.warn(`[warn] ${message}`, context ?? "");
   },
 
   info(message: string, context?: Context): void {
     if (!isDev) return;
-    // eslint-disable-next-line no-console
+     
     console.info(`[info] ${message}`, context ?? "");
   },
 
   debug(message: string, context?: Context): void {
     if (!isDev) return;
-    // eslint-disable-next-line no-console
+     
     console.debug(`[debug] ${message}`, context ?? "");
   },
 };
