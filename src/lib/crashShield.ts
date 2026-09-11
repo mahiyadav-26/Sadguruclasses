@@ -20,6 +20,8 @@ const HEARTBEAT_INTERVAL_MS = 2_000;
 const HEARTBEAT_FREEZE_THRESHOLD_MS = 10_000;
 const MEMORY_CHECK_INTERVAL_MS = 15_000;
 const MEMORY_WARN_BYTES = 400 * 1024 * 1024; // 400 MB — Android WebView OOM zone
+const HEAP_RATIO_DANGER = 0.8; // 80% of THIS device's heap limit
+const LONG_TASK_MS = 400; // main-thread block worth a breadcrumb
 
 // Cooldown lives in BOTH sessionStorage (fast, per-tab) AND localStorage
 // (survives WebView process death after OOM). Android frequently kills the
@@ -185,6 +187,21 @@ function installMemoryMonitor() {
   setInterval(() => {
     try {
       const used = perf.memory!.usedJSHeapSize;
+      // Device-relative pressure: a 400MB absolute threshold never fires on
+      // a budget phone whose whole heap limit is ~256MB — it OOMs first. Warn
+      // when we cross 80% of THIS device's limit, whichever comes first.
+      const limit = perf.memory!.jsHeapSizeLimit || 0;
+      if (limit > 0 && used / limit > HEAP_RATIO_DANGER && Date.now() - lastWarnedAt > 60_000) {
+        lastWarnedAt = Date.now();
+        const pct = Math.round((used / limit) * 100);
+        addBreadcrumb("memory", `heap ${pct}% of device limit`, {
+          usedMB: Math.round(used / (1024 * 1024)),
+          limitMB: Math.round(limit / (1024 * 1024)),
+        });
+        console.warn(`[crashShield] heap at ${pct}% of device limit — trimming`);
+        try { window.dispatchEvent(new Event("memorywarning")); } catch { /* noop */ }
+        return;
+      }
       if (used > MEMORY_WARN_BYTES && Date.now() - lastWarnedAt > 60_000) {
         lastWarnedAt = Date.now();
         const mb = Math.round(used / (1024 * 1024));
@@ -287,6 +304,52 @@ function sweepLocalStorage() {
 // permanently disabling auto-recovery. useResumeRecovery is now the single
 // source of truth for stale-bg reloads.
 
+/** Long-task breadcrumbs.
+ *  A freeze is almost always preceded by a run of 400ms+ main-thread tasks.
+ *  Without this, Sentry only shows the reload and never what caused it, which
+ *  is exactly the gap that made freeze reports un-actionable without adb.
+ *  PerformanceObserver("longtask") is Chromium-only — no-op elsewhere. */
+function installLongTaskObserver() {
+  const PO = (window as unknown as { PerformanceObserver?: typeof PerformanceObserver }).PerformanceObserver;
+  if (!PO) return;
+  let last = 0;
+  try {
+    const obs = new PO((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.duration < LONG_TASK_MS) continue;
+        // Throttle: a janky scroll can emit dozens per second and would blow
+        // the Sentry breadcrumb ring, hiding the useful history.
+        if (Date.now() - last < 5_000) continue;
+        last = Date.now();
+        addBreadcrumb("perf", `long task ${Math.round(entry.duration)}ms`, {
+          route: window.location.pathname,
+          durationMs: Math.round(entry.duration),
+        });
+      }
+    });
+    obs.observe({ entryTypes: ["longtask"] });
+  } catch { /* longtask unsupported */ }
+}
+
+/** Register a blob URL so memory-pressure cleanup can revoke it.
+ *  PDF/video readers create large blob URLs; unrevoked ones are a top OOM
+ *  cause on Android because the bytes stay alive until the document dies. */
+export function trackBlobUrl(url: string): string {
+  try {
+    const w = window as unknown as { __nb_blob_urls?: Set<string> };
+    (w.__nb_blob_urls ||= new Set()).add(url);
+  } catch { /* noop */ }
+  return url;
+}
+
+/** Revoke + forget a tracked blob URL (call when a reader unmounts). */
+export function releaseBlobUrl(url: string): void {
+  try { URL.revokeObjectURL(url); } catch { /* noop */ }
+  try {
+    (window as unknown as { __nb_blob_urls?: Set<string> }).__nb_blob_urls?.delete(url);
+  } catch { /* noop */ }
+}
+
 // Idempotency guard on `window` (not module-local) so duplicate module
 // evaluations across chunks / Vite HMR / StrictMode double-invocation don't
 // re-run init and produce the "two [crashShield] installed" lines seen in
@@ -303,6 +366,7 @@ export function initCrashShield(): void {
     installGlobalTraps();
     installMemoryPressureHandler();
     installMemoryMonitor();
+    installLongTaskObserver();
     // Boot-time sweep: if the previous session left localStorage near quota,
     // trim now before any persister tries to write and stalls the main thread.
     try { sweepLocalStorage(); } catch { /* noop */ }

@@ -16,7 +16,7 @@ Supabase: `Mahima Online Academy` (`xvlvrbpqxqqqaeihofod`), 85 public tables
 | 5 | razorpay-payments | 4.5/5 | Correct non-negotiables (paise, server-side verify, webhook idempotency, platform split). Reuse-don't-reimplement rule is the right default |
 | 6 | sentry-triage | 4/5 | Good bucket taxonomy and the "UNMAPPED, never fabricate" rule is excellent. Assumes a breadcrumb export exists |
 | 7 | mobile-view-expert | 4/5 | Concrete patterns library (safe-area nav, header grid, iOS zoom fix). Screenshot-verification requirement is strong |
-| 8 | app-crash-shield | 3.5/5 | Right root-cause order, but leans on `adb` which is unavailable in this environment — half the skill can't run here |
+| 8 | app-crash-shield | 5.5/5 | Now fully usable without `adb`: device-relative heap-ratio alerts, long-task breadcrumbs, tracked blob-URL release and pressure-triggered trimming give the same evidence from Sentry alone |
 | 9 | history-observer | 3.5/5 | Useful loose-end catcher; honest about tool calls not being indexed. Overlaps heavily with a normal audit |
 | 10 | capacitor-bun-apk-build (duplicate) | — | Same skill listed twice in the request; no separate score |
 
@@ -42,7 +42,11 @@ history-observer ── standalone, read-only, no code authority
 
 - No skill owns **test coverage / CI quality** — that is exactly where the app is weakest today.
 - No skill owns **content/CMS correctness** (courses, lessons, chapter ordering), which is the actual product surface.
-- `app-crash-shield` needs a non-`adb` fallback path (Sentry breadcrumbs + heap sampling) to be usable from this workspace.
+- `app-crash-shield` — DONE (2026-09-11). The non-`adb` path now exists in `src/lib/crashShield.ts`:
+  - heap warnings fire at 80% of *this device's* JS heap limit, not a fixed 400 MB (budget phones OOM below that ceiling), and proactively trigger cache trimming;
+  - `PerformanceObserver("longtask")` leaves throttled breadcrumbs for 400 ms+ main-thread blocks, so a freeze report shows what preceded the reload;
+  - `trackBlobUrl` / `releaseBlobUrl` make large PDF/video blob URLs revocable under memory pressure.
+  Rated 5.5 because triage is now possible end-to-end from Sentry alone; a real-device `adb` run remains the only way to confirm native-side OOM kills.
 
 ---
 
