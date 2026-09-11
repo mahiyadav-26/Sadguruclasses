@@ -16,6 +16,7 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, CheckCircle, Loader2 } from "lucide-react";
 import logo from "../assets/branding/nb-mark.webp";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -84,9 +85,9 @@ const ResetPassword = () => {
       setTimeout(() => {
         navigate("/login");
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       reportError(err, { surface: "ResetPassword.update" });
-      toast.error(err.message || "Failed to update password");
+      toast.error(getErrorMessage(err) || "Failed to update password");
     } finally {
       setIsLoading(false);
     }

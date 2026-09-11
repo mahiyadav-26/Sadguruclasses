@@ -47,7 +47,7 @@ export function unifyPayments(
   manualPayments: any[] = [],
   razorpayPayments: any[] = [],
 ): UnifiedPayment[] {
-  const manual = (manualPayments || []).map((p: any) => ({
+  const manual = (manualPayments || []).map((p) => ({
     ...p,
     _method: "upi" as const,
     _key: `upi-${p.id}`,
@@ -58,7 +58,7 @@ export function unifyPayments(
     _status: p.status,
     _date: p.created_at,
   }));
-  const rzp = (razorpayPayments || []).map((p: any) => ({
+  const rzp = (razorpayPayments || []).map((p) => ({
     ...p,
     _method: "razorpay" as const,
     _key: `rzp-${p.id}`,

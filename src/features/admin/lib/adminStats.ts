@@ -30,16 +30,16 @@ export function paymentTotals(
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   const completedRzp = (razorpayPayments || []).filter(
-    (p: any) => p.status?.toLowerCase() === "completed",
+    (p) => p.status?.toLowerCase() === "completed",
   );
   const approvedManual = (manualPayments || []).filter(
-    (p: any) => p.status?.toLowerCase() === "approved",
+    (p) => p.status?.toLowerCase() === "approved",
   );
 
-  const todayRzp = completedRzp.filter((p: any) => p.created_at?.startsWith(todayStr));
-  const todayManual = approvedManual.filter((p: any) => p.created_at?.startsWith(todayStr));
-  const monthRzp = completedRzp.filter((p: any) => p.created_at >= monthStart);
-  const monthManual = approvedManual.filter((p: any) => p.created_at >= monthStart);
+  const todayRzp = completedRzp.filter((p) => p.created_at?.startsWith(todayStr));
+  const todayManual = approvedManual.filter((p) => p.created_at?.startsWith(todayStr));
+  const monthRzp = completedRzp.filter((p) => p.created_at >= monthStart);
+  const monthManual = approvedManual.filter((p) => p.created_at >= monthStart);
 
   return {
     todayAmount: sum(todayRzp) + sum(todayManual),

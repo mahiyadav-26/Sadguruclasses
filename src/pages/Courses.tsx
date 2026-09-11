@@ -70,10 +70,10 @@ const Courses = () => {
       // Storage objects that didn't survive the Supabase project migration
       // resolve to null — fall back to the branded placeholder.
       const signed = await resolveContentUrls(
-        rows.map((item: any) => item.image_url || item.thumbnail_url || null),
+        rows.map((item) => item.image_url || item.thumbnail_url || null),
       );
 
-      return rows.map((item: any, i: number) => ({
+      return rows.map((item, i: number) => ({
         id: item.id,
         title: item.title,
         grade: Number(item.grade) || 0,
@@ -112,7 +112,7 @@ const Courses = () => {
         .eq("status", "active");
 
       if (!error && data) {
-        setEnrolledCourseIds(new Set(data.map((e: any) => e.course_id)));
+        setEnrolledCourseIds(new Set(data.map((e) => e.course_id)));
       }
     } catch (error) {
       logger.error("Error fetching enrollments:", error);

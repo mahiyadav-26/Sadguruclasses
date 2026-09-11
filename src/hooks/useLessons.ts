@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { getCached, setCached, invalidateCache, TTL } from "@/lib/ttlCache";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const cacheKey = (courseId?: number) => `lessons:course:${courseId ?? "none"}:v2`;
 
@@ -93,9 +94,9 @@ export const useLessons = (courseId?: number) => {
       const mapped = (data || []).map(mapLesson);
       setLessons(mapped);
       setCached(cacheKey(courseId), mapped);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching lessons:", err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       toast.error("Lessons load nahi hue — refresh karo");
     } finally {
       setLoading(false);
@@ -112,7 +113,7 @@ export const useLessons = (courseId?: number) => {
 
       if (dbError || !data) return null;
       return mapLesson(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching lesson:", err);
       toast.error("Lesson load nahi hui — refresh karo");
       return null;
@@ -146,7 +147,7 @@ export const useLessons = (courseId?: number) => {
       toast.success("Lesson created");
       invalidateCache(cacheKey(courseId)); await fetchLessons(true);
       return mapLesson(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error creating lesson:", err);
       toast.error("Lesson create nahi hui — dobara try karo");
       return null;
@@ -180,7 +181,7 @@ export const useLessons = (courseId?: number) => {
       toast.success("Lesson updated");
       invalidateCache(cacheKey(courseId)); await fetchLessons(true);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error updating lesson:", err);
       toast.error("Lesson update nahi hui — dobara try karo");
       return false;
@@ -203,7 +204,7 @@ export const useLessons = (courseId?: number) => {
       toast.success("Lesson deleted");
       invalidateCache(cacheKey(courseId)); await fetchLessons(true);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error deleting lesson:", err);
       toast.error("Delete nahi hua — dobara try karo");
       return false;

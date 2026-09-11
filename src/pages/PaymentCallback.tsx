@@ -8,6 +8,7 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { notifySuccess, notifyError } from "../lib/nativeChrome";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const PaymentCallback = () => {
   const [searchParams] = useSearchParams();
@@ -88,12 +89,12 @@ const PaymentCallback = () => {
         redirectTimer = window.setTimeout(() => {
           navigate('/my-courses', { replace: true, state: { justPurchased: Number(course_id) } });
         }, 1500);
-      } catch (err: any) {
+      } catch (err: unknown) {
         reportError(err, { surface: "PaymentCallback.verify" });
         if (cancelled) return;
         setStatus("failed");
         void notifyError();
-        setErrorMsg(err.message || "Verification failed. Don't worry — if payment was captured, enrollment will happen automatically.");
+        setErrorMsg(getErrorMessage(err) || "Verification failed. Don't worry — if payment was captured, enrollment will happen automatically.");
       }
     };
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Camera, Image as ImageIcon, Trash2, Loader2, X } from "lucide-react";
 import ProfileAvatar from "./ProfileAvatar";
 import { pickPhoto } from "@/lib/native/camera";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
@@ -158,7 +159,7 @@ const AvatarUploadModal = ({ isOpen, onClose, userId, currentAvatarUrl, fullName
       onUploadComplete(publicUrl);
       toast.success("Avatar updated!");
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       reportError(err, { surface: "AvatarUploadModal.upload" });
       toast.error("Failed to upload avatar");
     } finally {
@@ -178,7 +179,7 @@ const AvatarUploadModal = ({ isOpen, onClose, userId, currentAvatarUrl, fullName
       onUploadComplete(null);
       toast.success("Avatar removed");
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Failed to remove avatar");
     } finally {
       setUploading(false);
@@ -229,8 +230,8 @@ const AvatarUploadModal = ({ isOpen, onClose, userId, currentAvatarUrl, fullName
                   }
                   setSelectedFile(file);
                   setPreviewSafely(URL.createObjectURL(file));
-                } catch (e: any) {
-                  toast.error(e?.message ?? "Camera unavailable");
+                } catch (e: unknown) {
+                  toast.error(getErrorMessage(e) ?? "Camera unavailable");
                 }
               }}
               disabled={uploading}

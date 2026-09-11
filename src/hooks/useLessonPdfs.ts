@@ -3,6 +3,7 @@ import { supabase } from "../integrations/supabase/client";
 import { toast } from "sonner";
 import { resolveLecturePdfUrl, extractLecturePdfPath } from "../lib/resolveLecturePdfUrl";
 import { reportError } from "../lib/sentry";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface LessonPdf {
   id: string;
@@ -77,7 +78,7 @@ export const useLessonPdfs = (lessonId?: string) => {
       const newPdf = signedUrl ? { ...inserted, file_url: signedUrl } : inserted;
       setPdfs(prev => [...prev, newPdf]);
       return newPdf;
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("PDF upload nahi hua — file check karke dobara try karo");
       return null;
     }
@@ -103,7 +104,7 @@ export const useLessonPdfs = (lessonId?: string) => {
       const newPdf = data as LessonPdf;
       setPdfs(prev => [...prev, newPdf]);
       return newPdf;
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("PDF add nahi hui — URL check karke dobara try karo");
       return null;
     }

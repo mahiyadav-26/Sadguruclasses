@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 // Per-device session identifier (NOT an auth JWT — Supabase manages its own token).
 // Used by the "manage devices" feature to identify this browser/APK install.
@@ -143,7 +144,7 @@ const Settings = () => {
 
       if (error) throw error;
       toast.success("Settings saved!");
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error saving preferences:", err);
       toast.error("Failed to save settings");
     } finally {
@@ -173,8 +174,8 @@ const Settings = () => {
       setShowPasswordDialog(false);
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to change password");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to change password");
     } finally {
       setChangingPassword(false);
     }

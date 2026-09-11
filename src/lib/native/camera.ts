@@ -10,6 +10,7 @@
  */
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export type PickSource = "camera" | "gallery";
 
@@ -123,11 +124,11 @@ export async function pickPhoto(source: PickSource = "camera"): Promise<File | n
         toast.error("Couldn't read the captured photo. Please try again.");
         return null;
       }
-    } catch (e: any) {
-      const msg = String(e?.message ?? e ?? "");
+    } catch (e: unknown) {
+      const msg = String(getErrorMessage(e) ?? e ?? "");
       if (/cancel/i.test(msg) || /User cancelled/i.test(msg)) return null;
       if (e instanceof CameraPermissionError) {
-        toast.error(e.message);
+        toast.error(getErrorMessage(e));
         throw e;
       }
       if (/fetch/i.test(msg) || /Failed to fetch/i.test(msg)) {

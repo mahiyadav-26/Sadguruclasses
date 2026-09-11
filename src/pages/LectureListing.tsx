@@ -165,7 +165,7 @@ const LectureListing = () => {
                 ...(directLessonsData || []),
                 ...(subLessonsFullData || []),
               ];
-              setLessons(combined.map((l: any, idx: number) => ({
+              setLessons(combined.map((l, idx: number) => ({
                 ...l, lecture_type: l.lecture_type || "VIDEO", position: l.position || idx + 1,
               })));
             } else {
@@ -175,7 +175,7 @@ const LectureListing = () => {
               const { data: lessonsData, error: lessonsError } = await supabase
                 .from("lessons").select("id,title,video_url,course_id,chapter_id,lecture_type,position,thumbnail_url,class_pdf_url,is_locked,duration,duration_seconds,youtube_id,created_at,overview,description,like_count,is_free,is_preview,file_path,category").eq("chapter_id", chapterId).order("position", { ascending: true }).limit(200);
               if (!lessonsError) {
-                setLessons((lessonsData || []).map((l: any, idx: number) => ({
+                setLessons((lessonsData || []).map((l, idx: number) => ({
                   ...l, lecture_type: l.lecture_type || "VIDEO", position: l.position || idx + 1,
                 })));
               }
@@ -204,10 +204,10 @@ const LectureListing = () => {
             
             // Build count map: attribute nested chapter lessons to their parent
             const parentMap: Record<string, string> = {};
-            (nestedChapters || []).forEach((nc: any) => { if (nc.parent_id) parentMap[nc.id] = nc.parent_id; });
+            (nestedChapters || []).forEach((nc) => { if (nc.parent_id) parentMap[nc.id] = nc.parent_id; });
             
             const countMap: Record<string, number> = {};
-            (chapterLessonsData || []).forEach((l: any) => {
+            (chapterLessonsData || []).forEach((l) => {
               if (!l.chapter_id) return;
               const topParent = parentMap[l.chapter_id] || l.chapter_id;
               countMap[topParent] = (countMap[topParent] || 0) + 1;
@@ -223,7 +223,7 @@ const LectureListing = () => {
           const { data: lessonsData, error: lessonsError } = await supabase
             .from("lessons").select("id,title,video_url,course_id,chapter_id,lecture_type,position,thumbnail_url,class_pdf_url,is_locked,duration,duration_seconds,youtube_id,created_at,overview,description,like_count,is_free,is_preview,file_path,category").eq("course_id", Number(courseId)).order("created_at", { ascending: true }).limit(300);
           if (!lessonsError) {
-            setLessons((lessonsData || []).map((l: any, idx: number) => ({
+            setLessons((lessonsData || []).map((l, idx: number) => ({
               ...l, lecture_type: l.lecture_type || "VIDEO", position: l.position || idx + 1,
             })));
           }
@@ -272,7 +272,7 @@ const LectureListing = () => {
           .in("lesson_id", lessonIds)
           .eq("is_published", true);
         if (data) {
-          data.forEach((q: any) => { if (q.lesson_id) map[q.lesson_id] = q.id; });
+          data.forEach((q) => { if (q.lesson_id) map[q.lesson_id] = q.id; });
         }
       }
       

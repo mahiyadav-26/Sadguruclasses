@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   checkUploadFile,
   checkThumbnailFile,
@@ -68,8 +69,8 @@ export function useAdminUploadForm({ selectedCourseId, onVideoUrl, onThumbnailUr
       if (signErr) throw signErr;
       onVideoUrl(data.signedUrl);
       toast.success("Video uploaded to storage!");
-    } catch (err: any) {
-      toast.error("Video upload failed: " + err.message);
+    } catch (err: unknown) {
+      toast.error("Video upload failed: " + getErrorMessage(err));
       setVideoFile(null);
     } finally {
       setVideoFileUploading(false);
@@ -91,8 +92,8 @@ export function useAdminUploadForm({ selectedCourseId, onVideoUrl, onThumbnailUr
       onThumbnailUrl(storageUri('content', fileName));
 
       toast.success("Thumbnail uploaded!");
-    } catch (err: any) {
-      toast.error("Thumbnail upload failed: " + err.message);
+    } catch (err: unknown) {
+      toast.error("Thumbnail upload failed: " + getErrorMessage(err));
       setThumbnailFile(null);
     } finally {
       setThumbnailFileUploading(false);

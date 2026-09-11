@@ -214,9 +214,9 @@ const ChatWidget = forwardRef<HTMLDivElement>(() => {
 
     recognition.onstart = () => setIsListening(true);
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
+        .map((result) => result[0].transcript)
         .join("");
       setInput(transcript);
     };

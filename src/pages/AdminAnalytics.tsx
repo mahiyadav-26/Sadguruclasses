@@ -111,7 +111,7 @@ const AdminAnalytics = () => {
         .lte("created_at", end.toISOString())
         .then(({ data }) => ({
           date: format(day, "EEE dd"),
-          users: new Set((data ?? []).map((r: any) => r.user_id)).size,
+          users: new Set((data ?? []).map((r) => r.user_id)).size,
         }));
     });
     const results = await Promise.all(promises);
@@ -139,18 +139,18 @@ const AdminAnalytics = () => {
     if (!courses) return;
 
     const lessonMap: Record<number, number> = {};
-    (lessonCounts ?? []).forEach((l: any) => {
+    (lessonCounts ?? []).forEach((l) => {
       lessonMap[l.course_id] = (lessonMap[l.course_id] ?? 0) + 1;
     });
 
     const completionMap: Record<number, number> = {};
-    (progress ?? []).forEach((p: any) => {
+    (progress ?? []).forEach((p) => {
       completionMap[p.course_id] = (completionMap[p.course_id] ?? 0) + 1;
     });
 
     const result: CourseCompletion[] = courses
-      .filter((c: any) => lessonMap[c.id] > 0)
-      .map((c: any) => {
+      .filter((c) => lessonMap[c.id] > 0)
+      .map((c) => {
         const total = lessonMap[c.id] ?? 0;
         const completed = completionMap[c.id] ?? 0;
         return {
@@ -178,7 +178,7 @@ const AdminAnalytics = () => {
     if (!quizzes || !attempts) return;
 
     const rateMap: Record<string, { passed: number; failed: number }> = {};
-    (attempts ?? []).forEach((a: any) => {
+    (attempts ?? []).forEach((a) => {
       if (!rateMap[a.quiz_id]) rateMap[a.quiz_id] = { passed: 0, failed: 0 };
       if (a.passed) {
         rateMap[a.quiz_id].passed++;
@@ -188,8 +188,8 @@ const AdminAnalytics = () => {
     });
 
     const result: QuizRate[] = quizzes
-      .filter((q: any) => rateMap[q.id]?.passed + rateMap[q.id]?.failed > 0)
-      .map((q: any) => ({
+      .filter((q) => rateMap[q.id]?.passed + rateMap[q.id]?.failed > 0)
+      .map((q) => ({
         quiz: q.title.length > 16 ? q.title.substring(0, 16) + "…" : q.title,
         passed: rateMap[q.id]?.passed ?? 0,
         failed: rateMap[q.id]?.failed ?? 0,
@@ -201,7 +201,7 @@ const AdminAnalytics = () => {
     setQuizData(result);
 
     const totalAttempts = attempts?.length ?? 0;
-    const totalPassed = attempts?.filter((a: any) => a.passed).length ?? 0;
+    const totalPassed = attempts?.filter((a) => a.passed).length ?? 0;
     const avgPassRate = totalAttempts > 0 ? Math.round((totalPassed / totalAttempts) * 100) : 0;
     setSummaryStats(prev => ({ ...prev, totalAttempts, avgPassRate }));
   };
@@ -216,7 +216,7 @@ const AdminAnalytics = () => {
 
     // Aggregate per user
     const userMap: Record<string, { lessons: number; completed: number }> = {};
-    progress.forEach((p: any) => {
+    progress.forEach((p) => {
       if (!userMap[p.user_id]) userMap[p.user_id] = { lessons: 0, completed: 0 };
       userMap[p.user_id].lessons++;
       if (p.completed) userMap[p.user_id].completed++;
@@ -238,7 +238,7 @@ const AdminAnalytics = () => {
       .in("id", topIds);
 
     const result: TopStudent[] = topIds.map((id, idx) => {
-      const profile = profiles?.find((p: any) => p.id === id);
+      const profile = profiles?.find((p) => p.id === id);
       const stats = userMap[id];
       return {
         name: profile?.full_name ?? `Student ${idx + 1}`,

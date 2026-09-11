@@ -41,6 +41,7 @@ import {
 } from "../components/ui/dialog";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   Upload, Users, CheckCircle, XCircle, Clock,
   Trash2, Plus, BookOpen, ExternalLink, ShieldAlert, Search,
@@ -182,9 +183,9 @@ const Admin = () => {
       if (coursesData) setCoursesList(coursesData);
 
       const { data: profilesData } = await supabase.from('profiles').select('*');
-      const profileMap = new Map<string, any>((profilesData || []).map((p: any) => [p.id, p]));
+      const profileMap = new Map<string, any>((profilesData || []).map((p) => [p.id, p]));
       const withProfile = (rows: any[] | null) =>
-        (rows || []).map((r: any) => ({ ...r, profiles: profileMap.get(r.user_id) ?? null }));
+        (rows || []).map((r) => ({ ...r, profiles: profileMap.get(r.user_id) ?? null }));
 
       // profiles is not FK-linked to payment tables — join client-side.
       const { data: payData } = await supabase
@@ -256,8 +257,8 @@ const Admin = () => {
       if (error) throw error;
       setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       toast.success("Role updated successfully");
-    } catch (err: any) {
-      toast.error("Failed to update role: " + (err?.message || "Unknown error"));
+    } catch (err: unknown) {
+      toast.error("Failed to update role: " + (getErrorMessage(err) || "Unknown error"));
     } finally {
       setRoleChanging(prev => ({ ...prev, [userId]: false }));
     }
@@ -321,7 +322,7 @@ const Admin = () => {
   // real enforcer — this just gives the admin a clear UX warning). Enroll
   // FIRST, then mark approved, so we never end up with status=approved but
   // no enrollment row if the second write fails. Idempotent.
-  const handleApprovePayment = async (paymentRequest: any) => {
+  const handleApprovePayment = async (paymentRequest) => {
     if (paymentRequest.status === 'approved') {
       toast.info("Already approved.");
       return;
@@ -367,8 +368,8 @@ const Admin = () => {
 
       toast.success("Payment Approved & Course Unlocked!");
       fetchDashboardData();
-    } catch (error: any) {
-      toast.error("Approval Error: " + error.message);
+    } catch (error: unknown) {
+      toast.error("Approval Error: " + getErrorMessage(error));
     }
   };
 
@@ -383,8 +384,8 @@ const Admin = () => {
       if (error) throw error;
       toast.error("Payment request rejected.");
       fetchDashboardData();
-    } catch (error: any) {
-      toast.error("Error rejecting: " + error.message);
+    } catch (error: unknown) {
+      toast.error("Error rejecting: " + getErrorMessage(error));
     }
   };
 
@@ -394,7 +395,7 @@ const Admin = () => {
   // Blank = full refund (historical behaviour). Rupees, converted to paise.
   const [refundAmountText, setRefundAmountText] = useState("");
 
-  const openRefundDialog = (payment: any) => {
+  const openRefundDialog = (payment) => {
     setRefundConfirmPayment(payment);
     setRefundConfirmText("");
     setRefundAmountText("");
@@ -436,8 +437,8 @@ const Admin = () => {
           : 'Refund initiated! Course access revoked.'
       );
       fetchDashboardData();
-    } catch (err: any) {
-      toast.error('Refund failed: ' + (err?.message || 'Unknown error'));
+    } catch (err: unknown) {
+      toast.error('Refund failed: ' + (getErrorMessage(err) || 'Unknown error'));
     } finally {
       setRefundingPayment(null);
     }
@@ -476,8 +477,8 @@ const Admin = () => {
       setCourseThumbnailUrl("");
       setCourseThumbnailMode("file");
       fetchDashboardData();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
     } finally {
       setIsCreatingCourse(false);
     }
@@ -490,7 +491,7 @@ const Admin = () => {
     else { toast.success("Course deleted"); fetchDashboardData(); }
   };
 
-  const handleEditCourse = (course: any) => {
+  const handleEditCourse = (course) => {
     setEditingCourseId(course.id);
     setEditCourseData({ title: course.title || "", description: course.description || "", price: String(course.price || ""), grade: course.grade || "", startDate: course.start_date || "", endDate: course.end_date || "" });
     setEditThumbnailFile(null);

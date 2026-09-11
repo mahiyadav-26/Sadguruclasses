@@ -16,6 +16,7 @@ import {
 import { cn } from "../lib/utils";
 import { tapLight, tapMedium } from "../lib/nativeChrome";
 import { safeGet, safeSet, safeRemove } from "../lib/storage";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -92,15 +93,15 @@ const QuizAttempt = () => {
         if (questionsRes.error) throw questionsRes.error;
 
         setQuiz(quizRes.data as Quiz);
-        const qs = (questionsRes.data || []).map((q: any) => ({
+        const qs = (questionsRes.data || []).map((q) => ({
           ...q,
           options: Array.isArray(q.options) ? q.options : (q.options ? Object.values(q.options) : null),
         }));
         setQuestions(qs);
 
         // Attempt record is created only on submit to avoid orphan rows
-      } catch (err: any) {
-        toast.error("Failed to load quiz: " + err.message);
+      } catch (err: unknown) {
+        toast.error("Failed to load quiz: " + getErrorMessage(err));
         navigate(-1);
       } finally {
         setLoading(false);
@@ -154,10 +155,10 @@ const QuizAttempt = () => {
       if (flaggedKey) safeRemove(flaggedKey);
 
       navigate(`/quiz/${quizId}/result/${data.attempt_id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Allow retry after failure
       submittedRef.current = false;
-      toast.error("Submit failed: " + (err.message ?? "Unknown error"));
+      toast.error("Submit failed: " + (getErrorMessage(err) ?? "Unknown error"));
     } finally {
       setSubmitting(false);
     }

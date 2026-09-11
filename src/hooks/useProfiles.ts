@@ -4,6 +4,7 @@ import { supabase } from "../integrations/supabase/client";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface Profile {
   id: string;
@@ -63,7 +64,7 @@ export const useProfiles = () => {
     try {
       const { data, error: dbError } = await supabase.rpc("get_user_profiles_admin");
       if (dbError) throw dbError;
-      return (data || []).map((p: any) => ({
+      return (data || []).map((p) => ({
         id: p.id,
         fullName: p.full_name,
         email: p.email,
@@ -71,7 +72,7 @@ export const useProfiles = () => {
         role: p.role,
         createdAt: p.created_at,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching all profiles:", err);
       return [];
     }
@@ -98,7 +99,7 @@ export const useProfiles = () => {
         toast.success("Profile updated");
         await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
         return true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error("Error updating profile:", err);
         toast.error("Profile update nahi hui — dobara try karo");
         return false;

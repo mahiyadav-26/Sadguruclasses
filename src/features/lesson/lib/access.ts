@@ -39,6 +39,6 @@ export function normalizeLesson(row: any): Lesson {
   } as Lesson;
 }
 
-export function normalizeLessons(rows: any[] | null | undefined): Lesson[] {
+export function normalizeLessons(rows: unknown[] | null | undefined): Lesson[] {
   return (rows || []).map(normalizeLesson);
 }

@@ -3,6 +3,7 @@ import { supabase } from "../integrations/supabase/client";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface Message {
   id: string;
@@ -55,7 +56,7 @@ export const useMessages = () => {
 
       if (fetchError) throw fetchError;
 
-      const allMessages: MessageWithProfiles[] = (data || []).map((m: any) => ({
+      const allMessages: MessageWithProfiles[] = (data || []).map((m) => ({
         id: m.id,
         senderId: m.sender_id,
         recipientId: m.recipient_id,
@@ -71,9 +72,9 @@ export const useMessages = () => {
       setInbox(inboxMessages);
       setSent(sentMessages);
       setUnreadCount(inboxMessages.filter((m) => !m.isRead).length);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching messages:", err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -101,9 +102,9 @@ export const useMessages = () => {
       toast.success("Message sent");
       await fetchMessages();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error sending message:", err);
-      toast.error(err.message || "Failed to send message");
+      toast.error(getErrorMessage(err) || "Failed to send message");
       return false;
     }
   }, [userId, fetchMessages]);
@@ -112,7 +113,7 @@ export const useMessages = () => {
     try {
       await supabase.from("messages").update({ is_read: true }).eq("id", messageId);
       await fetchMessages();
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error marking message as read:", err);
     }
   }, [fetchMessages]);

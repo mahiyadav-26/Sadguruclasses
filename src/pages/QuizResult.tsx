@@ -16,6 +16,7 @@ import {
 import { cn } from "../lib/utils";
 import { QuizQuestionThumb } from "../components/quiz/QuizQuestionImage";
 import { isAnswerCorrect, normalizeMcqIndex } from "../lib/quizAnswer";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface Question {
   id: string;
@@ -120,7 +121,7 @@ const QuizResult = () => {
 
         setQuiz(quizRes.data as Quiz);
         setQuestions(
-          (questionsRes.data || []).map((q: any) => ({
+          (questionsRes.data || []).map((q) => ({
             ...q,
             options: Array.isArray(q.options) ? q.options : (q.options ? Object.values(q.options) : null),
           }))
@@ -136,8 +137,8 @@ const QuizResult = () => {
           .lte("submitted_at", attemptData.submitted_at);
         setAttemptNumber(count || 1);
 
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err));
         navigate("/all-tests");
       } finally {
         setLoading(false);

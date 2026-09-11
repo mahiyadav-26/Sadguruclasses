@@ -61,7 +61,7 @@ const AllTests = () => {
         const { data, error } = await query;
         if (error) throw error;
 
-        const lessonIds = (data || []).map((l: any) => l.id);
+        const lessonIds = (data || []).map((l) => l.id);
 
         // Fetch quizzes linked to these lessons
         let quizMap = new Map<string, string>();
@@ -77,7 +77,7 @@ const AllTests = () => {
           }
         }
 
-        const allTests: TestLesson[] = (data || []).map((l: any) => ({
+        const allTests: TestLesson[] = (data || []).map((l) => ({
           id: l.id,
           title: l.title,
           description: l.description,
@@ -103,7 +103,7 @@ const AllTests = () => {
         }
         const { data: standaloneQuizzes } = await standaloneQuery;
 
-        const standaloneTests: TestLesson[] = (standaloneQuizzes || []).map((q: any) => {
+        const standaloneTests: TestLesson[] = (standaloneQuizzes || []).map((q) => {
           const t = String(q.type || "").toLowerCase();
           const lectureType =
             t === "dpp-attempt" ? "DPP_ATTEMPT" :

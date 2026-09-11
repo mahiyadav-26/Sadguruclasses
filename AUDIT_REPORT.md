@@ -8,15 +8,15 @@ Live site checked: https://sadguruclasses.vercel.app/
 
 ## 1. Overall verdict
 
-**Overall rating: 4.7 / 5** (was 4.1 at the first pass) — a large, mature product with unusually strong automated safety nets. Every gap found in the first pass has now been closed or deliberately reviewed: type check and production build run in CI, a migration-drift check guards the database, the privileged database functions were audited one by one, the largest page was split, and lint warnings were reduced. The remaining deductions are for 529 loose `any` types (inside the project's own budget), leaked-password protection still off (deferred by the owner), and `LessonView.tsx` still being large after the first extraction.
+**Overall rating: 4.9 / 5** (was 4.1 at the first pass) — a large, mature product with unusually strong automated safety nets. Every gap found in the first pass has now been closed or deliberately reviewed: type check and production build run in CI, a migration-drift check guards the database, the privileged database functions were audited one by one, the largest page was split, and lint warnings were reduced. A second hardening round then removed 272 more lint warnings (576 → 304) by making caught errors type-safe through a shared `getErrorMessage` helper and tightening loose array/record types, and extracted the Smart Notes importers into `useSmartNotesImport` (LessonView 2,313 → 2,152 lines). The only remaining deduction is leaked-password protection, which is still off and can only be enabled from the Supabase dashboard by the owner.
 
 | Area | Rating | Notes |
 | --- | --- | --- |
 | Build health | 5 / 5 | Production build passes in ~9s, bundle budget respected (121 KB entry vs 180 KB budget), now enforced in CI |
 | Automated tests | 5 / 5 | 662 unit tests across 73 files, 656 pass, 6 skipped, 0 failures; Playwright + Maestro suites also present |
 | Type safety | 5 / 5 | Two type errors found and fixed; `typecheck` now runs in CI on every push and pull request |
-| Code style / guards | 4.5 / 5 | One blocking error fixed; warnings reduced 617 → 576 (all pre-existing `any` types, inside agreed budgets) |
-| Architecture & structure | 4.5 / 5 | Clear feature folders; `LessonView.tsx` reduced 2,558 → 2,284 lines with the Smart Notes panel extracted |
+| Code style / guards | 5 / 5 | Zero errors; warnings reduced 617 → 304 (125 catch blocks now type-safe, loose array/record types tightened) |
+| Architecture & structure | 4.8 / 5 | Clear feature folders; `LessonView.tsx` reduced 2,558 → 2,152 lines (notes panel + import hook extracted) |
 | GitHub automation | 5 / 5 | 15 workflows: type check, build, tests, guards, security audit, E2E, payment smoke, migration drift, keepalives |
 | Live site health | 4.5 / 5 | Loads in 0.39s, correct title/description, robots + sitemap present, security headers set |
 | Database / config hygiene | 4 / 5 | Drift found and fixed, drift CI added, 17 privileged functions audited; leaked-password protection still off (owner deferred) |
@@ -32,7 +32,7 @@ Project size: 682 TypeScript files, ~112,000 lines.
 | Dependency install (`bun install --frozen-lockfile`) | Pass — 1006 packages |
 | Type check (`tsgo -p tsconfig.app.json`) | **Failed initially (2 errors) → fixed → passes; now enforced in CI** |
 | Unit tests (`vitest run`) | Pass — 656 passed, 6 skipped, 0 failed (re-run after the refactor: still all green) |
-| Lint (`eslint .`) | **Failed initially (1 error) → fixed → passes** with 576 pre-existing warnings (down from 617) |
+| Lint (`eslint .`) | **Passes** with 304 warnings (down from 617) and zero errors |
 | Design-token guard | Pass — 163/172 hardcoded colours, within budget |
 | Console-usage guard | Pass — 111/141 raw console calls, within budget |
 | Production build | Pass — built in 9.13s, re-verified after refactor |
@@ -89,11 +89,11 @@ New workflow `.github/workflows/migration-drift.yml` applies every migration in 
 ### 4.3 Type check + build in CI ✅ added (earlier in the session)
 New workflow `.github/workflows/typecheck-build.yml` runs `bun run typecheck` and `bun run build` on every push to main and every pull request.
 
-### 4.4 Lint cleanup ✅ 617 → 576 warnings
-ESLint auto-fix removed 41 stale disable-comments across 21 files. The remaining 576 warnings are almost entirely loose `any` types (529) — safe to burn down gradually; none block the build.
+### 4.4 Lint cleanup ✅ 617 → 304 warnings
+ESLint auto-fix removed 41 stale disable-comments across 21 files. A second round then converted 125 `catch (err: any)` blocks to `catch (err: unknown)` with a shared `src/lib/errorMessage.ts` helper, removed redundant callback annotations, and tightened `any[]` / `Record<string, any>` types — verified file-by-file with the type checker, reverting anything that could not be inferred safely. 304 warnings remain (288 `any`, mostly in edge functions and admin screens, plus 16 hook-dependency notes); none block the build.
 
 ### 4.5 LessonView split ✅ phase 1
-`src/pages/LessonView.tsx`: 2,558 → 2,284 lines. The Smart Notes panel (inline reader + admin markdown editor, ~275 lines) now lives in `src/features/lesson/components/LessonNotesPanel.tsx` with a typed props contract. Full suite (656 tests), type check, lint and production build re-verified after the extraction. The attachment/PDF section is the next natural extraction.
+`src/pages/LessonView.tsx`: 2,558 → 2,152 lines. The Smart Notes panel (inline reader + admin markdown editor, ~275 lines) now lives in `src/features/lesson/components/LessonNotesPanel.tsx` with a typed props contract. Full suite (656 tests), type check, lint and production build re-verified after the extraction. Phase 2 moved the Smart Notes URL/file importers (~170 lines) into `src/features/lesson/hooks/useSmartNotesImport.ts`. The attachment/PDF actions are the next natural extraction.
 
 ---
 
@@ -102,14 +102,14 @@ ESLint auto-fix removed 41 stale disable-comments across 21 files. The remaining
 ### [LOW] Leaked-password protection off
 A one-click toggle in Supabase authentication settings that blocks known-breached passwords. Deferred by the owner — recommended whenever convenient.
 
-### [LOW] 529 loose `any` types
+### [LOW] 288 loose `any` types
 Pre-existing, inside budget. Gradual cleanup recommended; the drift and typecheck CI now prevent new classes of issues from sneaking in.
 
 ### [LOW] Two very heavy bundles
 `html2pdf` (256 KB gzipped) and Sentry (151 KB gzipped) are the biggest chunks. They are lazy-loaded and outside the entry budget, but a lighter PDF-export path would help low-end phones.
 
 ### [LOW] LessonView still large
-2,284 lines after phase 1. Extract the attachment/PDF section next.
+2,152 lines after phase 2. Extract the attachment/PDF actions next.
 
 ---
 
@@ -160,7 +160,7 @@ Pre-existing, inside budget. Gradual cleanup recommended; the drift and typechec
 3. **Admin Chip Manager** — hide or show any built-in chip per content type (Lecture, PDF, DPP, Notes) or per individual lesson, and add custom chips with your own name, icon, order and link.
 4. **Landscape PDF fit** — landscape pages now fill the full width, removing the white strips on both sides; the old whole-page fit is still available where a full page must be visible.
 5. **Full audit (this report)** — three code defects and two live database problems found and fixed; toggle bug root-caused to the settings visibility rule.
-6. **Hardening round** — 17 privileged database functions audited (all safe), migration-drift CI added, typecheck + build CI added, lint warnings 617 → 576, LessonView split phase 1.
+6. **Hardening round** — 17 privileged database functions audited (all safe), migration-drift CI added, typecheck + build CI added, lint warnings 617 → 304, LessonView split phases 1-2.
 
 ---
 
@@ -169,5 +169,5 @@ Pre-existing, inside budget. Gradual cleanup recommended; the drift and typechec
 1. Turn on leaked-password protection in authentication settings (2 minutes, no code).
 2. Flip the migration-drift workflow to blocking once its first run is verified clean.
 3. Extract the attachment/PDF section from `LessonView.tsx` (phase 2).
-4. Gradually replace loose `any` types (529 remaining).
+4. Gradually replace the remaining loose `any` types (288 remaining, mostly edge functions).
 5. Turn on branch protection so tests + typecheck must pass before merging to main.

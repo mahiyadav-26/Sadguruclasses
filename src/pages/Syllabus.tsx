@@ -41,7 +41,7 @@ const SyllabusPage = () => {
 
         if (error) throw error;
 
-        const mapped: SyllabusItem[] = (data || []).map((s: any) => ({
+        const mapped: SyllabusItem[] = (data || []).map((s) => ({
           id: s.id,
           courseId: s.course_id,
           title: s.title,

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { toast } from "../ui/use-toast";
 import { ArrowRight } from "lucide-react";
 import { supabase } from "../../integrations/supabase/client";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const grades = ["9", "10", "11", "12", "CG Lecturer Aspirant"];
 
@@ -40,9 +41,9 @@ const LeadForm = memo(() => {
       if (error) throw error;
       toast({ title: "Success", description: "Request received!" });
       setFormData({ studentName: "", email: "", grade: "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       reportError(error, { surface: "LeadForm.submit" });
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

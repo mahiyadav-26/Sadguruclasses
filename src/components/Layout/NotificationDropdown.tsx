@@ -42,7 +42,7 @@ const NotificationDropdown = () => {
         .select("notice_id")
         .eq("user_id", user.id)
         .in("notice_id", noticeData.map((n) => n.id));
-      readIds = new Set((reads || []).map((r: any) => r.notice_id));
+      readIds = new Set((reads || []).map((r) => r.notice_id));
     }
     const mapped = noticeData.map((n) => ({ ...n, isRead: readIds.has(n.id) }));
     setNotices(mapped);

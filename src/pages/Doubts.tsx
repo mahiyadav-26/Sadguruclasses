@@ -27,6 +27,7 @@ import ZoomMeetingEmbed from "../components/live/ZoomMeetingEmbed";
 import { useNavigate } from "react-router-dom";
 import { Markdown } from "../components/Markdown";
 import { openResource } from "../lib/openResource";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface DoubtSession {
   id: string;
@@ -187,8 +188,8 @@ const Doubts = () => {
           );
         }
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit request");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to submit request");
     } finally {
       setSubmitting(false);
     }
@@ -210,8 +211,8 @@ const Doubts = () => {
       toast.success(`Zoom meeting created! Meeting ID: ${meeting.meetingId}`);
       setScheduleDialogOpen(false);
       fetchSessions();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create Zoom meeting");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to create Zoom meeting");
     } finally {
       setCreatingMeeting(null);
     }

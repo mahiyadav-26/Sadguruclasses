@@ -21,6 +21,7 @@ const NotionRenderer = lazyWithRetry(() =>
 // react-notion-x base CSS — required for layout/typography of the rendered page.
 import "react-notion-x/src/styles.css";
 import { isSyntheticPop } from "../../lib/reader/overlayHistory";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface Props {
   url: string;
@@ -147,8 +148,8 @@ export default function NotionPageRenderer({ url, title, onClose, onReady, onDoc
           revokeTimerRef.current = null;
         }, 30_000);
       }
-    } catch (e: any) {
-      toast({ title: "Export failed", description: e?.message || "Could not generate PDF.", variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Export failed", description: getErrorMessage(e) || "Could not generate PDF.", variant: "destructive" });
     } finally {
       setExporting(false);
     }

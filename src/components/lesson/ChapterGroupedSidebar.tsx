@@ -13,7 +13,7 @@ interface ChapterGroupedSidebarProps {
   >;
   uncategorized: any[];
   lessons: any[];
-  renderLesson: (lesson: any, globalIndex: number) => React.ReactNode;
+  renderLesson: (lesson, globalIndex: number) => React.ReactNode;
   currentLessonChapterId?: string | null;
 }
 
@@ -40,7 +40,7 @@ export function ChapterGroupedSidebar({
   };
 
   const globalIndexMap = new Map<string, number>();
-  lessons.forEach((l: any, i: number) => globalIndexMap.set(l.id, i));
+  lessons.forEach((l, i: number) => globalIndexMap.set(l.id, i));
 
   return (
     <div className="divide-y divide-border">

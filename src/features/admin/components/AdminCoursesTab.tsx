@@ -51,7 +51,7 @@ interface AdminCoursesTabProps {
   onEditThumbnailUrlChange: (value: string) => void;
   editThumbnailMode: ThumbnailMode;
   onEditThumbnailModeChange: (mode: ThumbnailMode) => void;
-  onEditCourse: (course: any) => void;
+  onEditCourse: (course) => void;
   onSaveCourseEdit: () => void;
   onCancelEdit: () => void;
   onDeleteCourse: (id: number) => void;

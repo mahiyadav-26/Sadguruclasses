@@ -37,8 +37,8 @@ const AdminBatchMonitor = () => {
       supabase.from("enrollments").select("course_id"),
     ]);
     const counts: Record<number, number> = {};
-    (enrollments ?? []).forEach((e: any) => { counts[e.course_id] = (counts[e.course_id] ?? 0) + 1; });
-    const list = (courses ?? []).map((c: any) => ({
+    (enrollments ?? []).forEach((e) => { counts[e.course_id] = (counts[e.course_id] ?? 0) + 1; });
+    const list = (courses ?? []).map((c) => ({
       id: c.id as number, title: c.title as string, count: counts[c.id] ?? 0,
     }));
     setBatches(list);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, RefreshCw, ExternalLink } from "lucide-react";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface ReleaseAsset {
   name: string;
@@ -34,8 +35,8 @@ export default function ApkDownloadsCard() {
       if (!res.ok) throw new Error(`GitHub API ${res.status}`);
       const data: Release[] = await res.json();
       setReleases(data);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e) ?? "Failed to load");
     } finally {
       setLoading(false);
     }

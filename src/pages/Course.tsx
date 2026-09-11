@@ -172,7 +172,7 @@ const CoursePage = () => {
         .eq('course_id', Number(id))
         .order('position', { ascending: true });
       if (error) throw error;
-      return (data || []).map((l: any) => ({
+      return (data || []).map((l) => ({
         id: l.id,
         title: l.title,
         videoUrl: l.video_url,

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { reportError } from "../lib/sentry";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface Note {
   id: number;
@@ -28,9 +29,9 @@ export const useNotes = (lessonId?: number) => {
       setLoading(true);
       setError(null);
       setNotes([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       reportError(err, { surface: "useNotes.fetch", lessonId });
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

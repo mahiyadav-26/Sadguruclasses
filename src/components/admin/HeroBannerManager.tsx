@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const EMPTY_FORM: HeroBannerInsert = {
   title: "",
@@ -118,8 +119,8 @@ export default function HeroBannerManager() {
       onDone(`storage://content/${path}`);
 
       toast.success("Image uploaded!");
-    } catch (e: any) {
-      toast.error("Upload failed: " + e.message);
+    } catch (e: unknown) {
+      toast.error("Upload failed: " + getErrorMessage(e));
     } finally {
       setUploading(false);
     }
@@ -653,8 +654,8 @@ function UrlImportRow({ onImported }: { onImported: (uri: string) => void }) {
       onImported(uri);
       setUrl("");
       toast.success("Image imported to CDN!");
-    } catch (e: any) {
-      toast.error(e.message || "Import failed");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) || "Import failed");
     } finally {
       setBusy(false);
     }

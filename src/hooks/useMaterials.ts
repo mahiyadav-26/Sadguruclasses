@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { resolveContentUrls } from "../lib/resolveContentUrl";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface Material {
   id: string;
@@ -60,7 +61,7 @@ export const useMaterials = (courseId?: number) => {
       const { data: matData, error: matError } = await matQuery;
       if (matError) throw matError;
 
-      const fromMaterials: MaterialWithCourse[] = (matData || []).map((m: any) => ({
+      const fromMaterials: MaterialWithCourse[] = (matData || []).map((m) => ({
         id: m.id,
         courseId: m.course_id,
         lessonId: m.lesson_id,
@@ -79,7 +80,7 @@ export const useMaterials = (courseId?: number) => {
       let notesQuery = supabase.from("notes").select("*, lessons:lesson_id (course_id, courses:course_id (title, grade))").order("created_at", { ascending: false });
       const { data: notesData } = await notesQuery;
 
-      const fromNotes: MaterialWithCourse[] = (notesData || []).map((n: any) => ({
+      const fromNotes: MaterialWithCourse[] = (notesData || []).map((n) => ({
         id: `note-${n.id}`,
         courseId: n.lessons?.course_id || null,
         lessonId: n.lesson_id,
@@ -105,7 +106,7 @@ export const useMaterials = (courseId?: number) => {
 
       const { data: lessonsData } = await lessonsQuery;
 
-      const fromLessons: MaterialWithCourse[] = (lessonsData || []).map((l: any) => ({
+      const fromLessons: MaterialWithCourse[] = (lessonsData || []).map((l) => ({
         id: `lesson-${l.id}`,
         courseId: l.course_id,
         lessonId: l.id,
@@ -135,9 +136,9 @@ export const useMaterials = (courseId?: number) => {
       const resolved = combined.map((m, i) => ({ ...m, fileUrl: signed[i] || m.fileUrl }));
 
       setMaterials(resolved);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching materials:", err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -193,7 +194,7 @@ export const useMaterials = (courseId?: number) => {
       toast.success("Material uploaded");
       await fetchMaterials();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error uploading material:", err);
       toast.error("Upload nahi hua — file check karke dobara try karo");
       return false;
@@ -219,7 +220,7 @@ export const useMaterials = (courseId?: number) => {
       toast.success("Material deleted");
       await fetchMaterials();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error deleting material:", err);
       toast.error("Delete nahi ho paaya — dobara try karo");
       return false;

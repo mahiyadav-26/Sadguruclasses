@@ -3,6 +3,7 @@ import { supabase } from "../integrations/supabase/client";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { logger } from "../lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface Comment {
   id: string;
@@ -47,7 +48,7 @@ export const useComments = (lessonId?: string) => {
 
       if (dbError) throw dbError;
 
-      const formatted: Comment[] = (data || []).map((c: any) => ({
+      const formatted: Comment[] = (data || []).map((c) => ({
         id: c.id,
         lessonId: c.lesson_id,
         userId: c.user_id ?? null,
@@ -58,9 +59,9 @@ export const useComments = (lessonId?: string) => {
       }));
 
       setComments(formatted);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching comments", err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -86,7 +87,7 @@ export const useComments = (lessonId?: string) => {
       toast.success("Comment posted");
       await fetchComments();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error creating comment", err);
       toast.error("Comment post nahi hua — dobara try karo");
       return false;
@@ -110,7 +111,7 @@ export const useComments = (lessonId?: string) => {
       toast.success("Comment deleted");
       await fetchComments();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error deleting comment", err);
       toast.error("Comment delete nahi hua — dobara try karo");
       return false;

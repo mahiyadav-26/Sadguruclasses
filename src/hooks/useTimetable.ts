@@ -52,7 +52,7 @@ export const useTimetable = () => {
 
       if (error) throw error;
 
-      return (data ?? []).map((t: any) => ({
+      return (data ?? []).map((t) => ({
         id: t.id,
         courseId: t.course_id,
         dayOfWeek: t.day_of_week,

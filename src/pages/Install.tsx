@@ -80,7 +80,7 @@ async function fetchLatestApk(signal: AbortSignal): Promise<ApkInfo | null> {
     if (!res.ok) return null;
     const json: any = await res.json();
     const assets: any[] = Array.isArray(json?.assets) ? json.assets : [];
-    const isApk = (a: any) =>
+    const isApk = (a) =>
       typeof a?.browser_download_url === "string" && /\.apk$/i.test(a?.name || "");
     // Prefer the fixed-name canonical asset; fall back to any versioned
     // Sadguruclasses*.apk, and only then to whatever .apk the release carries.

@@ -10,7 +10,7 @@ import type { Comment } from "@/hooks/useComments";
 
 // SmartImage does network/format work — stub it to a plain img for these tests.
 vi.mock("@/components/common/SmartImage", () => ({
-  SmartImage: (props: any) => <img {...props} />,
+  SmartImage: (props) => <img {...props} />,
 }));
 
 const makeComment = (over: Partial<Comment> = {}): Comment => ({

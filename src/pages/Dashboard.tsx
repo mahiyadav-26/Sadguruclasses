@@ -72,7 +72,7 @@ interface DashboardSnapshot {
   upcoming_doubts?: any[];
 }
 
-const isPermissionDenied = (error: any) =>
+const isPermissionDenied = (error) =>
   error?.code === "42501" ||
   String(error?.message ?? "").toLowerCase().includes("permission denied");
 
@@ -181,13 +181,13 @@ const Dashboard = () => {
         if (enrollments.length > 0) {
           const seenIds = new Set<number>();
           const enrolled = enrollments
-            .filter((e: any) => {
+            .filter((e) => {
               const cid = e.course?.id;
               if (!cid || seenIds.has(cid)) return false;
               seenIds.add(cid);
               return true;
             })
-            .map((e: any) => {
+            .map((e) => {
               const courseId = e.course?.id;
               const courseLessons = allLessons.filter((l) => l.course_id === courseId);
               const courseLessonIds = new Set(courseLessons.map((l) => l.id));

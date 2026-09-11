@@ -53,6 +53,7 @@ import { useAdminUploadForm } from "../features/admin-upload/hooks/useAdminUploa
 import { ThumbnailUploadBlock } from "../features/admin-upload/components/ThumbnailUploadBlock";
 import { VideoUploadBlock } from "../features/admin-upload/components/VideoUploadBlock";
 import { ContentSourceBlock } from "../features/admin-upload/components/ContentSourceBlock";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type UploadType = "VIDEO" | "PDF" | "DPP" | "DPP_ATTEMPT" | "NOTES" | "TEST" | "LIVE";
 
@@ -353,8 +354,8 @@ const AdminUpload = () => {
       const { data } = await supabase.from('chapters').select('*')
         .eq('course_id', selectedCourseId).is('parent_id', null).order('position', { ascending: true });
       setChapters(data || []);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setCreatingChapter(false);
     }
@@ -381,8 +382,8 @@ const AdminUpload = () => {
       const { data } = await supabase.from('chapters').select('*')
         .eq('parent_id', selectedChapterId).order('position', { ascending: true });
       setSubChapters(data || []);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setCreatingSubfolder(false);
     }
@@ -484,8 +485,8 @@ const AdminUpload = () => {
       const { data } = await supabase.from('lessons').select('*')
         .eq('chapter_id', selectedChapterId).order('position', { ascending: true });
       setLessons(data || []);
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
     } finally {
       setIsUploading(false);
       setUploadingAttachments(false);
@@ -503,7 +504,7 @@ const AdminUpload = () => {
     }
   };
 
-  const handleOpenEdit = (lesson: any) => {
+  const handleOpenEdit = (lesson) => {
     setEditingLesson(lesson);
     setEditTitle(lesson.title || "");
     setEditVideoUrl(lesson.video_url || "");
@@ -534,8 +535,8 @@ const AdminUpload = () => {
         : l
       ));
       setEditingLesson(null);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setIsSavingEdit(false);
     }
@@ -569,13 +570,13 @@ const AdminUpload = () => {
           .eq('parent_id', selectedChapterId).order('position', { ascending: true });
         setSubChapters(refreshedSubs || []);
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 
   // ─── Chapter edit/rename handler ─────────────────────────────────────────
-  const handleOpenChapterEdit = (ch: any) => {
+  const handleOpenChapterEdit = (ch) => {
     setEditingChapterId(ch.id);
     setEditChapterTitle(ch.title || "");
     setEditChapterCode(ch.code || "");
@@ -601,8 +602,8 @@ const AdminUpload = () => {
       setChapters(updateList(chapters));
       setSubChapters(updateList(subChapters));
       setEditingChapterId(null);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setSavingChapterEdit(false);
     }

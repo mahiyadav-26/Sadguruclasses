@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { logger } from "../lib/logger";
 import EmptyState from "../components/common/EmptyState";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface ChatContact {
   id: string;
@@ -94,7 +95,7 @@ const Messages = () => {
       // Build contact map from messages
       const contactMap = new Map<string, { lastMessage: string; lastMessageAt: string; unread: number }>();
       
-      (msgData || []).forEach((m: any) => {
+      (msgData || []).forEach((m) => {
         const contactId = m.sender_id === userId ? m.recipient_id : m.sender_id;
         if (!contactMap.has(contactId)) {
           contactMap.set(contactId, {
@@ -122,8 +123,8 @@ const Messages = () => {
       if (signal.aborted || !aliveRef.current) return;
 
       const contactList: ChatContact[] = (profiles || [])
-        .filter((p: any) => p.id && p.id !== userId)
-        .map((p: any) => {
+        .filter((p) => p.id && p.id !== userId)
+        .map((p) => {
           const meta = contactMap.get(p.id);
           return {
             id: p.id,
@@ -145,7 +146,7 @@ const Messages = () => {
         });
 
       if (aliveRef.current && !signal.aborted) setContacts(contactList);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (aliveRef.current && !signal.aborted) logger.error("Error fetching contacts", err);
     } finally {
       if (aliveRef.current && !signal.aborted) setLoadingContacts(false);
@@ -171,7 +172,7 @@ const Messages = () => {
 
       if (!aliveRef.current || signal.aborted) return;
 
-      setMessages((data || []).map((m: any) => ({
+      setMessages((data || []).map((m) => ({
         id: m.id,
         senderId: m.sender_id,
         recipientId: m.recipient_id,
@@ -190,7 +191,7 @@ const Messages = () => {
         .eq("recipient_id", userId)
         .eq("is_read", false);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (aliveRef.current) logger.error("Error fetching messages", err);
     } finally {
       if (aliveRef.current) setLoadingMessages(false);
@@ -240,8 +241,8 @@ const Messages = () => {
       setNewMessage("");
       setAttachmentFile(null);
       await fetchMessages(selectedContact.id);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send message");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to send message");
     } finally {
       setSending(false);
     }

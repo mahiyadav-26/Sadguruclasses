@@ -124,11 +124,11 @@ export default function PaymentsSection({ range }: Props) {
 
       if (cancelled) return;
       const cm: Record<number, string> = {};
-      (courses ?? []).forEach((c: any) => (cm[c.id] = c.title));
+      (courses ?? []).forEach((c) => (cm[c.id] = c.title));
       setCourseMap(cm);
 
       const um: Record<string, string> = {};
-      (profiles ?? []).forEach((p: any) => (um[p.id] = p.full_name ?? "—"));
+      (profiles ?? []).forEach((p) => (um[p.id] = p.full_name ?? "—"));
       setUserMap(um);
 
       setLoading(false);
@@ -218,7 +218,7 @@ export default function PaymentsSection({ range }: Props) {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
-                  formatter={(v: any) => fmtInr(Number(v))}
+                  formatter={(v) => fmtInr(Number(v))}
                   contentStyle={{
                     background: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
@@ -262,7 +262,7 @@ export default function PaymentsSection({ range }: Props) {
                     width={140}
                   />
                   <Tooltip
-                    formatter={(v: any) => fmtInr(Number(v))}
+                    formatter={(v) => fmtInr(Number(v))}
                     contentStyle={{
                       background: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",

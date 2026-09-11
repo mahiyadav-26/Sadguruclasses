@@ -22,6 +22,7 @@ import {
 } from "@/features/lesson/lib/lessonChipConfig";
 import type { LessonChipIcon } from "@/features/lesson/lib/lessonChips";
 import { LESSON_CHIP_CONFIG_QUERY_KEY } from "@/hooks/useLessonChipConfig";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const BUILT_IN_CHIPS: { id: string; label: string }[] = [
   { id: "comments", label: "Comments" },
@@ -76,8 +77,8 @@ export default function LessonChipManager() {
           .maybeSingle();
         if (error) throw error;
         if (!cancelled) setConfig(parseLessonChipConfig(data?.value ?? null));
-      } catch (err: any) {
-        toast.error("Chip config load failed: " + err.message);
+      } catch (err: unknown) {
+        toast.error("Chip config load failed: " + getErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -102,9 +103,9 @@ export default function LessonChipManager() {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: LESSON_CHIP_CONFIG_QUERY_KEY });
       toast.success("Chip settings saved — students ke liye lagu ho gaya.", { id: "chip-config" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setConfig(previous);
-      toast.error("Save failed: " + err.message, { id: "chip-config" });
+      toast.error("Save failed: " + getErrorMessage(err), { id: "chip-config" });
     } finally {
       setSaving(false);
     }

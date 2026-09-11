@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../integrations/supabase/client";
 import { getCached, setCached, TTL } from "@/lib/ttlCache";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const STATS_KEY = "landing:stats:v1";
 const CONTENT_KEY = "landing:content:v1";
@@ -90,8 +91,8 @@ export const useLandingData = () => {
       setLoading(true);
       setError(null);
       await Promise.all([fetchStats(), fetchContent()]);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -37,6 +37,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableQuestion } from "../components/admin/quiz/SortableQuestion";
 import { defaultQuestion, type Quiz, type QuestionForm } from "../components/admin/quiz/types";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const AdminQuizManager = () => {
   const confirmAction = useConfirm();
@@ -154,8 +155,8 @@ const AdminQuizManager = () => {
       const firstId = questionForms[0]?._uid;
       setExpandedQuestions(firstId ? { [firstId]: true } : {});
       setView("edit-questions");
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setSavingQuiz(false);
     }
@@ -202,8 +203,8 @@ const AdminQuizManager = () => {
       setQuestionForms(formsWithUrls);
       toast.success("Questions saved!");
       await fetchQuizzes();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setSavingQuestions(false);
     }

@@ -120,7 +120,7 @@ const AdminStudentDetail = () => {
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
                     {data.enrollments.length === 0 && <div className="p-4 text-sm text-muted-foreground">No enrollments.</div>}
-                    {data.enrollments.map((e: any) => (
+                    {data.enrollments.map((e) => (
                       <div key={e.course_id} className="px-4 py-3 flex items-center justify-between text-sm">
                         <span className="truncate">{e.course_title || `Course #${e.course_id}`}</span>
                         <span className="text-xs text-muted-foreground">{e.enrolled_at ? format(new Date(e.enrolled_at), "dd MMM yyyy") : ""}</span>
@@ -135,7 +135,7 @@ const AdminStudentDetail = () => {
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
                     {data.payments.length === 0 && <div className="p-4 text-sm text-muted-foreground">No payments.</div>}
-                    {data.payments.slice(0, 20).map((pay: any) => (
+                    {data.payments.slice(0, 20).map((pay) => (
                       <div key={pay.id} className="px-4 py-2.5 flex items-center justify-between text-sm">
                         <span className="font-mono text-xs truncate">{pay.id.slice(0, 8)}</span>
                         <div className="flex items-center gap-2">

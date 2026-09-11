@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const DeleteAccountPublic = () => {
   const [email, setEmail] = useState("");
@@ -28,8 +29,8 @@ const DeleteAccountPublic = () => {
       if (data?.error) throw new Error(data.error);
       setSubmitted(true);
       toast.success("Request received. Check your email to confirm.");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not submit request. Please email support@sadgurucoaching.in");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) ?? "Could not submit request. Please email support@sadgurucoaching.in");
     } finally {
       setSubmitting(false);
     }

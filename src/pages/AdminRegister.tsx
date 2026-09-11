@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Shield, UserPlus, Loader2 } from "lucide-react";
 import logoAsset from "../assets/logo.webp.asset.json";
 import { getAssetUrl } from "@/lib/assetUrl";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const logo = getAssetUrl(logoAsset);
 
@@ -64,9 +65,9 @@ const AdminRegister = () => {
       toast.success("Admin account created. Please sign in.");
       navigate("/admin/login", { replace: true });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       reportError(error, { surface: "AdminRegister.submit" });
-      toast.error(error?.message || "Failed to create admin account");
+      toast.error(getErrorMessage(error) || "Failed to create admin account");
     } finally {
 
       setIsLoading(false);

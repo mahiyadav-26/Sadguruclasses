@@ -309,7 +309,7 @@ const MyCourses = () => {
 
       if (error) throw error;
 
-      const courseIds = (enrollments || []).map((e: any) => e.course_id);
+      const courseIds = (enrollments || []).map((e) => e.course_id);
 
       // Fetch progress and lessons in parallel
       const [progressRes, lessonsRes] = await Promise.all([
@@ -327,21 +327,21 @@ const MyCourses = () => {
       const allLessons = lessonsRes.data || [];
 
       const courseIdCounts: Record<number, number> = {};
-      (enrollments || []).forEach((e: any) => {
+      (enrollments || []).forEach((e) => {
         courseIdCounts[e.course_id] = (courseIdCounts[e.course_id] || 0) + 1;
       });
 
       const seenCourseIds: Record<number, number> = {};
 
-      const enrolledCoursesRaw = (enrollments || []).map((enrollment: any) => {
+      const enrolledCoursesRaw = (enrollments || []).map((enrollment) => {
         const course = enrollment.courses;
         if (!course) return null;
 
-        const courseLessons = allLessons.filter((l: any) => l.course_id === course.id);
-        const courseLessonIds = new Set(courseLessons.map((l: any) => l.id));
+        const courseLessons = allLessons.filter((l) => l.course_id === course.id);
+        const courseLessonIds = new Set(courseLessons.map((l) => l.id));
         // Use lesson_id fallback in case course_id is null in user_progress records
         const completedLessons = progressData.filter(
-          (p: any) => p.completed && (p.course_id === course.id || courseLessonIds.has(p.lesson_id))
+          (p) => p.completed && (p.course_id === course.id || courseLessonIds.has(p.lesson_id))
         );
         const totalLessons = courseLessons.length;
         const progressPercent = totalLessons > 0

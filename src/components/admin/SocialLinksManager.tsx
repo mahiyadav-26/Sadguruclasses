@@ -7,6 +7,7 @@ import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { toast } from "sonner";
 import { Save, Loader2, ExternalLink } from "lucide-react";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const SOCIAL_KEYS = [
   { key: "whatsapp_url", label: "WhatsApp", placeholder: "https://wa.me/919876543210", icon: "💬" },
@@ -34,7 +35,7 @@ const SocialLinksManager = () => {
         toast.error("Failed to load social links");
       } else if (data) {
         const map: Record<string, string> = {};
-        (data as any[]).forEach((row: any) => { map[row.key] = row.value || ""; });
+        (data as any[]).forEach((row) => { map[row.key] = row.value || ""; });
         setLinks(map);
       }
       setLoading(false);
@@ -52,8 +53,8 @@ const SocialLinksManager = () => {
           .eq("key", key);
       }
       toast.success("Social links saved!");
-    } catch (err: any) {
-      toast.error("Failed to save: " + err.message);
+    } catch (err: unknown) {
+      toast.error("Failed to save: " + getErrorMessage(err));
     } finally {
       setSaving(false);
     }

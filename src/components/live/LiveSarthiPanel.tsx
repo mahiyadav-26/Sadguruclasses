@@ -6,6 +6,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Send, Bot, RotateCcw, Copy } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface Props {
   sessionId: string;
@@ -102,8 +103,8 @@ const LiveSarthiPanel = ({ sessionId, sessionTitle, sessionDescription, courseTi
     try {
       const reply = await invoke(last.content, history);
       setMessages((p) => [...p, { role: "assistant", content: reply, ts: Date.now() }]);
-    } catch (e: any) {
-      toast.error(e?.message || "AI error");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) || "AI error");
     } finally {
       setBusy(false);
     }

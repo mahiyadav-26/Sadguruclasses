@@ -7,6 +7,7 @@ import LessonChipManager from "./LessonChipManager";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   LESSON_FEATURE_KEYS,
   LESSON_FEATURE_DEFAULTS,
@@ -67,8 +68,8 @@ export default function LessonFeatureControlsManager() {
         if (cancelled) return;
         if (error) throw error;
         setFlags(parseLessonFeatureRows(data || []));
-      } catch (err: any) {
-        toast.error("Failed to load lesson feature controls: " + err.message);
+      } catch (err: unknown) {
+        toast.error("Failed to load lesson feature controls: " + getErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -102,8 +103,8 @@ export default function LessonFeatureControlsManager() {
       toast.success(`${label} ${next ? "ON" : "OFF"} — sabhi students ke liye lagu ho gaya.`, {
         id: `lesson-flag-${flag}`,
       });
-    } catch (err: any) {
-      toast.error("Save failed: " + err.message, { id: `lesson-flag-${flag}` });
+    } catch (err: unknown) {
+      toast.error("Save failed: " + getErrorMessage(err), { id: `lesson-flag-${flag}` });
       setFlags((prev) => ({ ...prev, [flag]: !next }));
     } finally {
       setSaving(null);

@@ -8,6 +8,7 @@ import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import { Eye, EyeOff, Shield, LogIn, Loader2 } from "lucide-react";
 import logo from "../assets/branding/nb-mark.webp";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -64,7 +65,7 @@ const AdminLogin = () => {
       toast.success("Welcome, admin");
       navigate('/admin/upload', { replace: true });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Login ruk gaya — dobara try karo");
     } finally {
       setIsLoading(false);

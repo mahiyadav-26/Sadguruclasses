@@ -152,7 +152,7 @@ export const useLessonNotes = (lessonId?: string) => {
       }
 
 
-      (pdfsRes.data || []).forEach((p: any) => {
+      (pdfsRes.data || []).forEach((p) => {
         if (seenUrls.has(p.file_url)) return;
         seenUrls.add(p.file_url);
         merged.push({
@@ -168,7 +168,7 @@ export const useLessonNotes = (lessonId?: string) => {
         });
       });
 
-      (attRes.data || []).forEach((a: any) => {
+      (attRes.data || []).forEach((a) => {
         if (seenUrls.has(a.file_url)) return;
         seenUrls.add(a.file_url);
         merged.push({

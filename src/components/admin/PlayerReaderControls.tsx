@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   PLAYER_READER_KEYS,
   PLAYER_READER_DEFAULTS,
@@ -50,8 +51,8 @@ export default function PlayerReaderControlsManager() {
         if (cancelled) return;
         if (error) throw error;
         setFlags(parsePlayerReaderRows(data || []));
-      } catch (err: any) {
-        toast.error("Failed to load player & reader controls: " + err.message);
+      } catch (err: unknown) {
+        toast.error("Failed to load player & reader controls: " + getErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -77,8 +78,8 @@ export default function PlayerReaderControlsManager() {
 
       const label = FLAGS.find((f) => f.key === flag)?.label || flag;
       toast.success(`${label} ${next ? "ON" : "OFF"} — sabhi students ke liye ${next ? "enable" : "disable"} ho gaya.`);
-    } catch (err: any) {
-      toast.error("Save failed: " + err.message);
+    } catch (err: unknown) {
+      toast.error("Save failed: " + getErrorMessage(err));
       // Revert local state on failure
       setFlags((prev) => ({ ...prev, [flag]: !next }));
     } finally {

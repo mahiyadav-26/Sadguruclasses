@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { LessonAttachment, LessonAttachmentKind } from "@/hooks/useLessonAttachments";
 import pdfIconSvg from "@/assets/pdf-icon-grayscale.svg";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface AttachmentRowProps {
   attachment: LessonAttachment;
@@ -80,7 +81,7 @@ export function AttachmentRow({ attachment, onOpenPdf, resolveUrl, onDownloaded,
         { id: t },
       );
       onDownloaded?.(attachment.title || attachment.file_name, url, fileName, attachment.kind.toUpperCase());
-    } catch (err: any) {
+    } catch (err: unknown) {
       reportError(err, { surface: "AttachmentRow.download" });
       // Last resort: hand the file to the system browser / download manager so
       // a tap never ends with nothing happening.
@@ -89,7 +90,7 @@ export function AttachmentRow({ attachment, onOpenPdf, resolveUrl, onDownloaded,
         await openResource({ url, kind: "link" });
         toast.success("Opening file…", { id: t });
       } catch {
-        toast.error(err?.message || "Download failed", { id: t });
+        toast.error(getErrorMessage(err) || "Download failed", { id: t });
       }
     }
   };

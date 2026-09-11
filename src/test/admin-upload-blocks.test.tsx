@@ -6,7 +6,7 @@ import { ContentSourceBlock } from "@/features/admin-upload/components/ContentSo
 
 // MediaPreview fetches/inspects media — stub it out for these render tests.
 vi.mock("@/components/admin/MediaPreview", () => ({
-  default: (props: any) => <div data-testid="media-preview">{props.type}</div>,
+  default: (props) => <div data-testid="media-preview">{props.type}</div>,
 }));
 
 const dragProps = {

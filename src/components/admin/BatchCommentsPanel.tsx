@@ -12,6 +12,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
 import { Textarea } from "../ui/textarea";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "../ui/dialog";
@@ -52,8 +53,8 @@ export const BatchCommentsPanel = ({ courseId }: Props) => {
           .select("id, title")
           .eq("course_id", courseId)
           .limit(1000);
-        lessonIds = (lessons ?? []).map((l: any) => l.id);
-        lessonMap = Object.fromEntries((lessons ?? []).map((l: any) => [l.id, l.title]));
+        lessonIds = (lessons ?? []).map((l) => l.id);
+        lessonMap = Object.fromEntries((lessons ?? []).map((l) => [l.id, l.title]));
         if (lessonIds.length === 0) { setRows([]); return; }
       }
 
@@ -71,12 +72,12 @@ export const BatchCommentsPanel = ({ courseId }: Props) => {
       if (courseId == null && mapped.length) {
         const ids = Array.from(new Set(mapped.map((c) => c.lesson_id).filter(Boolean))) as string[];
         const { data: lessons } = await supabase.from("lessons").select("id, title").in("id", ids);
-        lessonMap = Object.fromEntries((lessons ?? []).map((l: any) => [l.id, l.title]));
+        lessonMap = Object.fromEntries((lessons ?? []).map((l) => [l.id, l.title]));
       }
       mapped = mapped.map((c) => ({ ...c, lesson_title: c.lesson_id ? lessonMap[c.lesson_id] : null }));
       setRows(mapped);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Comments load nahi ho paaye");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "Comments load nahi ho paaye");
     } finally {
       setLoading(false);
     }

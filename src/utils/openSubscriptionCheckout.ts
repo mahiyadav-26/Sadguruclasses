@@ -14,6 +14,7 @@ import {
   hapticPaymentError,
 } from "./paymentApi";
 import type { SubscriptionPlanSlug } from "@/data/subscriptionPlans";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const MERCHANT_NAME = "Sadguru Coaching Classes";
 const BRAND_COLOR = "#F97316";
@@ -50,9 +51,9 @@ export const openSubscriptionCheckout = async (
       "create-subscription-order",
       { plan_slug: planSlug }
     );
-  } catch (e: any) {
+  } catch (e: unknown) {
     void hapticPaymentError();
-    callbacks.onError(e?.message || "Could not start checkout");
+    callbacks.onError(getErrorMessage(e) || "Could not start checkout");
     return;
   }
 
@@ -69,10 +70,10 @@ export const openSubscriptionCheckout = async (
       );
       void hapticPaymentSuccess();
       callbacks.onSuccess(verifyData.subscription);
-    } catch (e: any) {
+    } catch (e: unknown) {
       void hapticPaymentError();
       callbacks.onError(
-        e?.message ||
+        getErrorMessage(e) ||
           "Verification failed. Your payment is safe — contact support if it persists."
       );
     }
@@ -96,12 +97,12 @@ export const openSubscriptionCheckout = async (
     try {
       const resp = await openNativeRazorpayCheckout(sharedOpts);
       await verify(resp);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof RazorpayCancelledError) {
         callbacks.onDismiss?.();
       } else {
         void hapticPaymentError();
-        callbacks.onError(e?.message || "Payment failed");
+        callbacks.onError(getErrorMessage(e) || "Payment failed");
       }
     }
     return;
@@ -118,8 +119,8 @@ export const openSubscriptionCheckout = async (
       },
       modal: { ondismiss: () => callbacks.onDismiss?.() },
     });
-  } catch (e: any) {
-    callbacks.onError(e?.message || "Could not open checkout");
+  } catch (e: unknown) {
+    callbacks.onError(getErrorMessage(e) || "Could not open checkout");
   }
 };
 
@@ -132,7 +133,7 @@ export const startSubscriptionTrial = async (
       { plan_slug: planSlug }
     );
     return { ok: true, subscription: data.subscription };
-  } catch (e: any) {
-    return { ok: false, error: e?.message || "Could not start trial" };
+  } catch (e: unknown) {
+    return { ok: false, error: getErrorMessage(e) || "Could not start trial" };
   }
 };

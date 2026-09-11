@@ -108,7 +108,7 @@ export default function UsersSection({ range }: Props) {
         1,
       );
       const signupMap = new Map<string, number>();
-      (signups ?? []).forEach((s: any) => {
+      (signups ?? []).forEach((s) => {
         const key = format(new Date(s.created_at), "yyyy-MM-dd");
         signupMap.set(key, (signupMap.get(key) ?? 0) + 1);
       });
@@ -130,7 +130,7 @@ export default function UsersSection({ range }: Props) {
       const platformMap = new Map<string, number>();
       const activeByDay = new Map<string, Set<string>>();
 
-      sess.forEach((s: any) => {
+      sess.forEach((s) => {
         const t = new Date(s.last_active_at).getTime();
         if (t >= dayAgo) dauSet.add(s.user_id);
         if (t >= weekAgo) wauSet.add(s.user_id);

@@ -9,6 +9,7 @@ import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { logger } from "../lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -63,16 +64,16 @@ const Attendance = () => {
         .eq("status", "active");
 
       if (!error && data) {
-        const userIds = Array.from(new Set(data.map((e: any) => e.user_id).filter(Boolean)));
+        const userIds = Array.from(new Set(data.map((e) => e.user_id).filter(Boolean)));
         const profileMap = new Map<string, any>();
         if (userIds.length) {
           const { data: profs } = await supabase
             .from("profiles")
             .select("id, full_name, email")
             .in("id", userIds);
-          (profs || []).forEach((p: any) => profileMap.set(p.id, p));
+          (profs || []).forEach((p) => profileMap.set(p.id, p));
         }
-        setStudentList(data.map((e: any, idx: number) => {
+        setStudentList(data.map((e, idx: number) => {
           const p = profileMap.get(e.user_id);
           return {
             id: e.user_id,
@@ -131,7 +132,7 @@ const Attendance = () => {
 
       toast.success("Attendance submitted");
       navigate("/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Attendance submission error", error);
       toast.error("Failed to submit attendance");
     } finally {

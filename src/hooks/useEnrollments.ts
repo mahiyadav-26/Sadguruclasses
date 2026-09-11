@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { resolveContentUrl } from "../lib/resolveContentUrl";
 import type { Course } from "./useCourses";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 
 export interface Enrollment {
@@ -82,9 +83,9 @@ export const useEnrollments = () => {
       setEnrollments(formatted);
       setEnrolledCourseIds(formatted.filter(e => e.status === 'active').map((e) => e.courseId));
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error fetching enrollments:", err);
-      if (aliveRef.current) setError(err.message);
+      if (aliveRef.current) setError(getErrorMessage(err));
     } finally {
       if (aliveRef.current) setLoading(false);
     }
@@ -107,7 +108,7 @@ export const useEnrollments = () => {
         .maybeSingle();
 
       return !!data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error checking enrollment:", err);
       return false;
     }
@@ -157,9 +158,9 @@ export const useEnrollments = () => {
       }
       await fetchEnrollments();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error enrolling in course:", err);
-      toast.error(err.message || "Failed to enroll");
+      toast.error(getErrorMessage(err) || "Failed to enroll");
       return false;
     }
   }, [user, fetchEnrollments]);
@@ -181,9 +182,9 @@ export const useEnrollments = () => {
       toast.success("Enrollment cancelled");
       await fetchEnrollments();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Error cancelling enrollment:", err);
-      toast.error(err.message || "Failed to cancel enrollment");
+      toast.error(getErrorMessage(err) || "Failed to cancel enrollment");
       return false;
     }
   }, [user, fetchEnrollments]);

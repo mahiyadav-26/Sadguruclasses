@@ -3,6 +3,7 @@ import { supabase } from "../integrations/supabase/client";
 import { useAuth } from "../contexts/AuthContext";
 import { reportError } from "../lib/sentry";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface LectureSchedule {
   id: string;
@@ -47,7 +48,7 @@ export const useLectureSchedules = () => {
       if (error) throw error;
 
       setSchedules(
-        (data || []).map((s: any) => ({
+        (data || []).map((s) => ({
           id: s.id,
           courseId: s.course_id,
           chapterId: s.chapter_id,
@@ -62,7 +63,7 @@ export const useLectureSchedules = () => {
           courseName: s.courses?.title || null,
         }))
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       reportError(err, { surface: "useLectureSchedules.fetch" });
     } finally {
       setLoading(false);
@@ -90,8 +91,8 @@ export const useLectureSchedules = () => {
       toast.success("Schedule created!");
       await fetchSchedules();
       return true;
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create schedule");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to create schedule");
       return false;
     }
   }, [user, isAdmin, isTeacher, fetchSchedules]);
@@ -116,8 +117,8 @@ export const useLectureSchedules = () => {
       toast.success("Schedule updated!");
       await fetchSchedules();
       return true;
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update schedule");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to update schedule");
       return false;
     }
   }, [user, isAdmin, isTeacher, fetchSchedules]);
@@ -129,8 +130,8 @@ export const useLectureSchedules = () => {
       toast.success("Schedule deleted");
       await fetchSchedules();
       return true;
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to delete");
       return false;
     }
   }, [fetchSchedules]);

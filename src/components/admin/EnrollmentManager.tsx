@@ -50,16 +50,16 @@ const EnrollmentManagerImpl = ({ coursesList, usersList }: Props) => {
       .select("*, courses(title)")
       .order("purchased_at", { ascending: false })
       .limit(200);
-    const userIds = Array.from(new Set((data || []).map((e: any) => e.user_id).filter(Boolean)));
+    const userIds = Array.from(new Set((data || []).map((e) => e.user_id).filter(Boolean)));
     const profileMap = new Map<string, any>();
     if (userIds.length) {
       const { data: profs } = await supabase
         .from("profiles")
         .select("id, full_name, email")
         .in("id", userIds);
-      (profs || []).forEach((p: any) => profileMap.set(p.id, p));
+      (profs || []).forEach((p) => profileMap.set(p.id, p));
     }
-    setEnrollments((data || []).map((e: any) => ({ ...e, profiles: profileMap.get(e.user_id) ?? null })));
+    setEnrollments((data || []).map((e) => ({ ...e, profiles: profileMap.get(e.user_id) ?? null })));
     setEnrollLoading(false);
   };
 

@@ -13,6 +13,7 @@ import { useAuth } from "../contexts/AuthContext";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import AvatarUploadModal from "../components/profile/AvatarUploadModal";
 import { logger } from "../lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const Profile = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,7 +44,7 @@ const Profile = () => {
   // stayed null because `initialProfile` was captured before auth was ready.
   useEffect(() => {
     if (!authProfile) return;
-    setProfile((prev: any) => prev ?? {
+    setProfile((prev) => prev ?? {
       id: authProfile.id,
       email: authProfile.email,
       full_name: authProfile.fullName,
@@ -72,7 +73,7 @@ const Profile = () => {
       setProfile({ ...profile, full_name: nameInput, mobile: mobileInput });
       setIsEditing(false);
       await refetchUserData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to update profile");
     }
   };

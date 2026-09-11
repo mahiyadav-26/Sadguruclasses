@@ -49,8 +49,8 @@ const AdminUsers = () => {
       supabase.from("enrollments").select("user_id"),
     ]);
     const counts: Record<string, number> = {};
-    (enrollments ?? []).forEach((e: any) => { counts[e.user_id] = (counts[e.user_id] ?? 0) + 1; });
-    setRows((profiles ?? []).map((p: any) => ({ ...p, batch_count: counts[p.id] ?? 0 })));
+    (enrollments ?? []).forEach((e) => { counts[e.user_id] = (counts[e.user_id] ?? 0) + 1; });
+    setRows((profiles ?? []).map((p) => ({ ...p, batch_count: counts[p.id] ?? 0 })));
     setLoading(false);
   };
 

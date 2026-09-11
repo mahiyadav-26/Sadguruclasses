@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../co
 import { toast } from "sonner";
 import { ArrowLeft, Mail, CheckCircle, Loader2 } from "lucide-react";
 import logo from "../assets/branding/nb-mark.webp";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -39,9 +40,9 @@ const ForgotPassword = () => {
 
       setEmailSent(true);
       toast.success("Password reset email sent!");
-    } catch (err: any) {
+    } catch (err: unknown) {
       reportError(err, { surface: "ForgotPassword.submit" });
-      toast.error(err.message || "Failed to send reset email");
+      toast.error(getErrorMessage(err) || "Failed to send reset email");
     } finally {
       setIsLoading(false);
     }

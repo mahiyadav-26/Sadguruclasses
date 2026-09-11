@@ -36,6 +36,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 // ─── Sortable row wrapper ───────────────────────────────────────────
 const SortableRow = ({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) => {
@@ -212,8 +213,8 @@ const AdminCMS = () => {
       toast.success("Course created!");
       setNewCourse({ title: "", grade: "", description: "", price: "", startDate: "", endDate: "", teacherName: "", teacherTitle: "", teacherBio: "", teacherAvatarUrl: "", teacherVerified: false });
       fetchAllData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -246,8 +247,8 @@ const AdminCMS = () => {
       toast.success("Subject created!");
       setNewChapter({ courseId: newChapter.courseId, code: "", title: "" });
       fetchAllData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -303,8 +304,8 @@ const AdminCMS = () => {
       toast.success("Lecture added!");
       setNewLecture({ ...newLecture, title: "", youtubeUrl: "" });
       fetchAllData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     }
   };
 

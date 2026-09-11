@@ -54,7 +54,7 @@ const Students = () => {
         return;
       }
 
-      const userIds = Array.from(new Set((enrollments || []).map((e: any) => e.user_id).filter(Boolean)));
+      const userIds = Array.from(new Set((enrollments || []).map((e) => e.user_id).filter(Boolean)));
       let profileMap = new Map<string, any>();
       if (userIds.length) {
         const { data: profs, error: profErr } = await supabase
@@ -62,7 +62,7 @@ const Students = () => {
           .select("id, full_name, email, mobile")
           .in("id", userIds);
         if (profErr) logger.error("Error fetching students", profErr);
-        profileMap = new Map((profs || []).map((p: any) => [p.id, p]));
+        profileMap = new Map((profs || []).map((p) => [p.id, p]));
       }
 
       // Group by user

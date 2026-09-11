@@ -40,7 +40,7 @@ vi.mock("../components/video/PdfViewer", () => {
 
 vi.mock("../components/viewer/AutoScrollFab", () => ({
   __esModule: true,
-  default: (props: any) =>
+  default: (props) =>
     React.createElement("div", {
       "data-testid": "autoscroll-fab",
       "data-visible": String(props.visible),

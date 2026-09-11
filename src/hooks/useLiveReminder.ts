@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 /**
  * Manage a student's reminder for a given live session.
@@ -52,8 +53,8 @@ export function useLiveReminder(sessionId: string | undefined) {
         setIsSet(true);
         toast.success("Reminder set — class shuru hote hi ping karenge");
       }
-    } catch (e: any) {
-      toast.error(e?.message || "Reminder save nahi hua");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) || "Reminder save nahi hua");
     } finally {
       setBusy(false);
     }

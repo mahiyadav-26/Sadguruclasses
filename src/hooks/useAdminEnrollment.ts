@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { reportError } from '../lib/sentry';
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface AdminEnrollmentResult {
   success: boolean;
@@ -72,10 +73,10 @@ export const useAdminEnrollment = () => {
         alreadyEnrolled: false,
         data: { id: enrollment.id, courseId },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       reportError(error, { surface: 'useAdminEnrollment.enroll' });
       toast.error('Enroll nahi ho paaya — dobara try karo');
-      return { success: false, error: error.message };
+      return { success: false, error: getErrorMessage(error) };
     } finally {
       setIsEnrolling(false);
     }

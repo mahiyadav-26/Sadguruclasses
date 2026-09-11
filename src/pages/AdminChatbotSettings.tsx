@@ -12,6 +12,7 @@ import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errorMessage";
 import {
   Bot, Plus, Trash2, Save, Settings, MessageSquare, ToggleLeft, ToggleRight, Loader2,
   BookOpen, RefreshCw, Brain, Edit2, Check, X, ChevronDown, ChevronUp, Search,
@@ -164,8 +165,8 @@ const ChatbotSettings = () => {
         const { data: kbData } = await supabase.from('knowledge_base').select('*').order('position', { ascending: true });
         setKnowledge((kbData || []) as KnowledgeEntry[]);
       }
-    } catch (e: any) {
-      toast.error(`❌ ${e.message || 'Network error'}`);
+    } catch (e: unknown) {
+      toast.error(`❌ ${getErrorMessage(e) || 'Network error'}`);
     } finally {
       setCrawling(false);
     }
@@ -199,8 +200,8 @@ const ChatbotSettings = () => {
       setCrawlUrl('');
       const { data: kbData } = await supabase.from('knowledge_base').select('*').order('position', { ascending: true });
       setKnowledge((kbData || []) as KnowledgeEntry[]);
-    } catch (e: any) {
-      toast.error(`❌ ${e.message || 'Network error'}`);
+    } catch (e: unknown) {
+      toast.error(`❌ ${getErrorMessage(e) || 'Network error'}`);
     } finally {
       setScrapingFC(false);
     }

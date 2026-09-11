@@ -11,6 +11,7 @@ import { Eye, EyeOff, UserPlus, Loader2, AlertCircle, WifiOff, RefreshCw } from 
 import logo from "../assets/branding/nb-mark.webp";
 import { validateEmailDomain } from "../lib/emailBlocklist";
 import { checkPasswordStrength, type PasswordStrength } from "../lib/passwordStrength";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const strengthColors: Record<PasswordStrength, string> = {
   weak: "bg-destructive",
@@ -150,14 +151,14 @@ const Signup = () => {
       }
       // else: auto-confirmed — useEffect handles navigation
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!aliveRef.current || controller.signal.aborted) return;
       reportError(error, { surface: "Signup.submit" });
-      const isNetwork = /network|fetch|timeout|abort|timed|connection/i.test(error.message || "");
+      const isNetwork = /network|fetch|timeout|abort|timed|connection/i.test(getErrorMessage(error) || "");
       setIsNetworkError(isNetwork);
       setErrorMessage(isNetwork
         ? "Network error — check your internet connection and try again."
-        : (error.message || "Failed to create account"));
+        : (getErrorMessage(error) || "Failed to create account"));
     } finally {
       if (aliveRef.current && !controller.signal.aborted) setIsLoading(false);
     }

@@ -10,6 +10,7 @@ import logo from "../assets/branding/nb-mark.webp";
 import { tapHaptic } from "@/lib/native/haptics";
 import { validateEmailDomain } from "../lib/emailBlocklist";
 import { getNetworkStatus } from "@/lib/native/network";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -82,9 +83,9 @@ const Login = () => {
       }
 
       // Login succeeded — onAuthStateChange will update isAuthenticated and the useEffect above will navigate
-    } catch (err: any) {
-      const errorMsg = mapError(err.message || "Login ruk gaya — dobara try karo");
-      const isNetwork = /network|fetch|timeout|abort|timed|connection/i.test(err.message || "");
+    } catch (err: unknown) {
+      const errorMsg = mapError(getErrorMessage(err) || "Login ruk gaya — dobara try karo");
+      const isNetwork = /network|fetch|timeout|abort|timed|connection/i.test(getErrorMessage(err) || "");
       setErrorMessage(errorMsg);
       setIsNetworkError(isNetwork);
     } finally {

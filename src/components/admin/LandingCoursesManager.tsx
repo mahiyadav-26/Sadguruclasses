@@ -18,6 +18,7 @@ import { Badge } from "../ui/badge";
 import { Trash2, Pencil, Plus, X, Check, Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const EMPTY: LandingCourseInsert = {
   slug: "",
@@ -73,8 +74,8 @@ export default function LandingCoursesManager() {
       setImportUrl("");
       setImportTargetId(null);
       toast.success("Image imported.");
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e));
     } finally {
       setImporting(false);
     }

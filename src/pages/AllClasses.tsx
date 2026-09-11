@@ -64,14 +64,14 @@ const AllClasses = () => {
 
         // Build lesson count map
         const countMap: Record<number, number> = {};
-        (lessonsRes.data || []).forEach((l: any) => {
+        (lessonsRes.data || []).forEach((l) => {
           if (l.course_id) countMap[l.course_id] = (countMap[l.course_id] || 0) + 1;
         });
 
         // All Classes lists EVERY course. It used to filter down to the
         // selected batch, which made the page look empty/one-row after a
         // course was picked. Selection now only drives highlighting.
-        const formattedCourses: Course[] = (coursesRes.data || []).map((c: any) => ({
+        const formattedCourses: Course[] = (coursesRes.data || []).map((c) => ({
           id: c.id,
           title: c.title,
           grade: c.grade,

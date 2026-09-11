@@ -95,7 +95,7 @@ const ChapterView = () => {
         // Completed lessons
         const completedMap: Record<string, number> = {};
         let totalCompleted = 0;
-        const completedLessonIds = new Set((progressRes.data || []).map((p: any) => p.lesson_id));
+        const completedLessonIds = new Set((progressRes.data || []).map((p) => p.lesson_id));
         totalCompleted = completedLessonIds.size;
         for (const l of lessonsData) {
           if (completedLessonIds.has(l.id) && l.chapter_id) {
@@ -122,7 +122,7 @@ const ChapterView = () => {
           }
         }
 
-        const mappedChapters: Chapter[] = (chaptersRes.data || []).map((ch: any) => {
+        const mappedChapters: Chapter[] = (chaptersRes.data || []).map((ch) => {
           const subIds = subChaptersByParent[ch.id] || [];
           const totalLessonCount = (lessonCountMap[ch.id] || 0) + subIds.reduce((sum, sid) => sum + (lessonCountMap[sid] || 0), 0);
           const totalComp = (completedMap[ch.id] || 0) + subIds.reduce((sum, sid) => sum + (completedMap[sid] || 0), 0);

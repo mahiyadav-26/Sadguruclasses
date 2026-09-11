@@ -224,7 +224,7 @@ const MyCourseDetail = () => {
         grade: cd.grade, imageUrl: cd.image_url, thumbnailUrl: cd.thumbnail_url,
       };
 
-      const mappedLessons: Lesson[] = (lessonsRes.data || []).map((l: any, idx: number) => ({
+      const mappedLessons: Lesson[] = (lessonsRes.data || []).map((l, idx: number) => ({
         id: l.id, title: l.title, videoUrl: l.video_url, description: l.description,
         overview: l.overview, isLocked: l.is_locked, lectureType: l.lecture_type || "VIDEO",
         position: l.position || idx + 1, youtubeId: l.youtube_id, createdAt: l.created_at,
@@ -239,7 +239,7 @@ const MyCourseDetail = () => {
 
       const allChaptersList = allChaptersRes.data || [];
       const childrenMap: Record<string, string[]> = {};
-      allChaptersList.forEach((ch: any) => {
+      allChaptersList.forEach((ch) => {
         if (ch.parent_id) {
           (childrenMap[ch.parent_id] ||= []).push(ch.id);
         }
@@ -268,7 +268,7 @@ const MyCourseDetail = () => {
         lessonCount: totalLessons, completedLessons: totalCompleted, thumbnailUrl: null,
       };
 
-      const mappedChapters: Chapter[] = allChaptersList.map((ch: any) => {
+      const mappedChapters: Chapter[] = allChaptersList.map((ch) => {
         const ids = [ch.id, ...getDescendantIds(ch.id)];
         return {
           id: ch.id, code: ch.code, title: ch.title, position: ch.position, parent_id: ch.parent_id,

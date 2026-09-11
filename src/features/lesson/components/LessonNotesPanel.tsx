@@ -10,6 +10,7 @@ import { LoadingSpinner } from "../../../components/ui/loading-spinner";
 import AutoScrollFab from "../../../components/viewer/AutoScrollFab";
 import { lazyWithRetry } from "../../../lib/lazyWithRetry";
 import type { Lesson } from "../types";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const ObsidianMarkdown = lazyWithRetry(() => import("../../../components/notes/ObsidianMarkdown"));
 
@@ -126,8 +127,8 @@ export function LessonNotesPanel({
                   await addDownload(fileName, url, fileName, "MD", blob);
                   setTimeout(() => URL.revokeObjectURL(url), 5_000);
                   toast.success("Saved to Downloads");
-                } catch (err: any) {
-                  toast.error(err?.message || "Download failed");
+                } catch (err: unknown) {
+                  toast.error(getErrorMessage(err) || "Download failed");
                 }
               }}
               title="Download notes"

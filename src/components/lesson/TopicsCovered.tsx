@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { ListVideo, Clock, Loader2, Edit2, ChevronDown, ChevronUp, Save } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export interface TopicsCoveredProps {
   lessonId: string;
@@ -81,7 +82,7 @@ export function TopicsCovered({ lessonId, overview, isAdmin, onSaved, videoUrl }
       } else {
         toast.error("Is video ke liye timestamps nahi bane");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("AI timestamp error:", err);
       toast.error("Timestamps nahi bane — thodi der baad dobara try karo");
     } finally {

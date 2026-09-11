@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Ambient module shims for third-party packages that ship no type definitions.
+   These declarations intentionally stay permissive: narrowing them here would type-check the shim, not the library. */
 declare module '@dnd-kit/core' {
   export type DragEndEvent = any;
   export const DndContext: any;
