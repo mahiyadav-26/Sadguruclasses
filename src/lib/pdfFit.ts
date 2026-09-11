@@ -27,9 +27,10 @@ export function computeFitPageWidth(
  * Device-adaptive page sizing for the full-screen reader.
  *
  * Portrait  -> fit to width (the page fills the screen edge-to-edge).
- * Landscape -> additionally cap the width so a whole page fits the visible
- *              height, otherwise a rotated phone shows only a sliver of the
- *              page and the reader feels broken.
+ * Landscape -> also fits width by default, so a rotated phone shows no white
+ *              strips on the sides; the reader scrolls vertically. Pass
+ *              `wholePage: true` to keep the legacy height-bound fit where a
+ *              whole page must stay visible at once.
  *
  * `pageRatio` is height / width of the PDF page (A4 portrait ~ 1.414).
  * Pure / side-effect free.
@@ -41,6 +42,7 @@ export function computeFitPageSize({
   pageRatio,
   gutter = 0,
   minWidth = 240,
+  wholePage = false,
 }: {
   viewportWidth: number;
   viewportHeight: number;
@@ -48,12 +50,14 @@ export function computeFitPageSize({
   pageRatio?: number;
   gutter?: number;
   minWidth?: number;
+  /** Landscape only: cap the width so an entire page fits the height. */
+  wholePage?: boolean;
 }): number {
   const fitWidth = computeFitPageWidth(viewportWidth, containerWidth, gutter);
   const vh = Math.max(0, Math.floor(viewportHeight || 0));
   const ratio = Number.isFinite(pageRatio) && (pageRatio as number) > 0 ? (pageRatio as number) : 0;
   const isLandscape = viewportWidth > vh && vh > 0;
-  if (!isLandscape || !ratio) return fitWidth;
+  if (!isLandscape || !ratio || !wholePage) return fitWidth;
   const heightFit = Math.floor(vh / ratio);
   return Math.max(minWidth, Math.min(fitWidth, heightFit));
 }

@@ -84,7 +84,9 @@ import { CollapsiblePdfSection } from "@/features/lesson/components/CollapsibleP
 import { LessonChipStrip } from "@/features/lesson/components/LessonChipStrip";
 import { LessonDesktopHeader } from "@/features/lesson/components/LessonDesktopHeader";
 import { LessonLockedOverlay } from "@/features/lesson/components/LessonLockedOverlay";
-import { buildLessonChips, lessonProgressPercent } from "@/features/lesson/lib/lessonChips";
+import { buildLessonChips, lessonProgressPercent, isPanelChipEnabled, firstPanelChipId } from "@/features/lesson/lib/lessonChips";
+import { useLessonChipConfig } from "../hooks/useLessonChipConfig";
+import { resolveLessonChipScope } from "@/features/lesson/lib/lessonChipConfig";
 import notesFireIcon from "../assets/icons/notes-fire.svg";
 import { logger } from "@/lib/logger";
 import { useLessonChat } from "@/hooks/useLessonChat";
@@ -1204,10 +1206,42 @@ const LessonView = () => {
   // Admin-controlled lesson feature switches (site_settings). Defaults are
   // all-ON, so the page behaves exactly as before until an admin flips one.
   const lessonFlags = useLessonFeatureFlags();
-  const lessonChips = useMemo(
-    () => buildLessonChips({ hasNotes, isAdminOrTeacher, hasLiked, likeCount, flags: lessonFlags }),
-    [hasNotes, isAdminOrTeacher, hasLiked, likeCount, lessonFlags],
+  // Admin chip manager: per content-type defaults + per-lesson override.
+  const chipConfig = useLessonChipConfig();
+  const chipScope = useMemo(
+    () => resolveLessonChipScope(chipConfig, currentLesson?.lecture_type, currentLesson?.id),
+    [chipConfig, currentLesson?.lecture_type, currentLesson?.id],
   );
+  const lessonChips = useMemo(
+    () => buildLessonChips({
+      hasNotes,
+      isAdminOrTeacher,
+      hasLiked,
+      likeCount,
+      flags: lessonFlags,
+      hiddenChipIds: chipScope.hidden,
+      customChips: chipScope.custom,
+    }),
+    [hasNotes, isAdminOrTeacher, hasLiked, likeCount, lessonFlags, chipScope],
+  );
+
+  // A disabled/hidden chip must not stay open via a ?tab= deep link.
+  useEffect(() => {
+    if (lessonFlags.isLoading || lessonChips.length === 0) return;
+    if (isPanelChipEnabled(lessonChips, activeChip)) return;
+    const fallback = firstPanelChipId(lessonChips);
+    if (fallback && fallback !== activeChip) setActiveChip(fallback);
+  }, [lessonChips, activeChip, lessonFlags.isLoading]);
+
+  // Custom (link) chips open their website instead of switching panels.
+  const handleChipSelect = useCallback((id: string) => {
+    const chip = lessonChips.find((c) => c.id === id);
+    if (chip?.action === "link") {
+      if (chip.url) window.open(chip.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setActiveChip(id);
+  }, [lessonChips]);
 
   // Load notes from storage when lesson changes
   useEffect(() => {
@@ -2001,7 +2035,7 @@ const LessonView = () => {
                         likesLoading={likesLoading}
                         collapsed={isReader && !chromeVisible}
                         notesIconSrc={notesFireIcon}
-                        onSelect={setActiveChip}
+                        onSelect={handleChipSelect}
                         onToggleLike={() => toggleLike()}
                       />
 

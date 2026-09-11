@@ -3,6 +3,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import LessonChipManager from "./LessonChipManager";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import {
   parseLessonFeatureRows,
   type LessonFeatureFlag,
   type LessonFeatureFlags,
+  resetLessonFeatureFlagsCache,
 } from "@/hooks/useLessonFeatureFlags";
 
 const GROUPS: { title: string; flags: { key: LessonFeatureFlag; label: string; description: string }[] }[] = [
@@ -84,12 +86,18 @@ export default function LessonFeatureControlsManager() {
       const { error } = await supabase
         .from("site_settings")
         .upsert(
-          { key: LESSON_FEATURE_KEYS[flag], value: String(next), updated_at: new Date().toISOString() },
+          {
+            key: LESSON_FEATURE_KEYS[flag],
+            value: String(next),
+            is_public: true,
+            updated_at: new Date().toISOString(),
+          },
           { onConflict: "key" },
         );
       if (error) throw error;
 
       setFlags((prev) => ({ ...prev, [flag]: next }));
+      resetLessonFeatureFlagsCache();
       queryClient.invalidateQueries({ queryKey: LESSON_FEATURE_QUERY_KEY });
       toast.success(`${label} ${next ? "ON" : "OFF"} — sabhi students ke liye lagu ho gaya.`, {
         id: `lesson-flag-${flag}`,
@@ -136,6 +144,7 @@ export default function LessonFeatureControlsManager() {
           </CardContent>
         </Card>
       ))}
+      <LessonChipManager />
     </div>
   );
 }

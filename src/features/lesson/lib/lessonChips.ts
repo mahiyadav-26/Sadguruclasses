@@ -23,7 +23,9 @@ export interface LessonChip {
   label: string;
   icon: LessonChipIcon;
   /** Chips with an action fire a callback instead of switching the panel. */
-  action?: "like";
+  action?: "like" | "link";
+  /** Target for admin-created link chips. */
+  url?: string;
 }
 
 export interface LessonChipOptions {
@@ -39,6 +41,10 @@ export interface LessonChipOptions {
    * that pass nothing get today's behaviour.
    */
   flags?: Partial<Record<LessonChipFlag, boolean>>;
+  /** Built-in chip ids hidden by the admin chip manager for this scope. */
+  hiddenChipIds?: string[];
+  /** Admin-created link chips appended after the built-ins. */
+  customChips?: { id: string; label: string; icon: LessonChipIcon; url: string; order?: number }[];
 }
 
 export type LessonChipFlag =
@@ -94,11 +100,37 @@ export function buildLessonChips(opts: LessonChipOptions): LessonChip[] {
     { id: "rating", label: "Rating", icon: "rating" },
   ];
 
-  if (!flags) return all;
-  return all.filter((chip) => {
+  const hidden = new Set(opts.hiddenChipIds ?? []);
+  const builtIns = all.filter((chip) => {
+    if (hidden.has(chip.id)) return false;
+    if (!flags) return true;
     const flag = CHIP_FLAG_BY_ID[chip.id];
     return flag ? flags[flag] !== false : true;
   });
+
+  const custom = (opts.customChips ?? [])
+    .filter((c) => !hidden.has(c.id))
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map<LessonChip>((c) => ({
+      id: c.id,
+      label: c.label,
+      icon: c.icon,
+      action: "link",
+      url: c.url,
+    }));
+
+  return [...builtIns, ...custom];
+}
+
+/** Panel ids the viewer is allowed to open (link/action chips have no panel). */
+export function firstPanelChipId(chips: LessonChip[]): string | undefined {
+  return chips.find((c) => !c.action)?.id;
+}
+
+/** True when `id` maps to a chip that opens a panel in the current chip set. */
+export function isPanelChipEnabled(chips: LessonChip[], id: string): boolean {
+  return chips.some((c) => c.id === id && !c.action);
 }
 
 
