@@ -1,7 +1,12 @@
-// Native Razorpay checkout wrapper (Capacitor Android/iOS).
-// Uses the official `capacitor-razorpay` plugin which opens the native
-// Razorpay SDK sheet — this is what allows UPI intents to launch PhonePe,
-// Google Pay and Paytm directly without going through an in-app browser.
+// Native Razorpay checkout wrapper (Capacitor Android).
+//
+// Backed by our own `RazorpayNative` Capacitor plugin, which calls the
+// officially documented Android flow: Checkout.preload() at app start and
+// checkout.open(activity, options) on purchase. The previously used
+// third-party `capacitor-razorpay` package launched Razorpay's CheckoutActivity
+// through a raw Intent, bypassing that flow — which is why the APK never showed
+// the UPI app tiles (GPay / PhonePe / Paytm) while the website did.
+import { loadRazorpayNative } from "../lib/native/razorpay";
 import { addBreadcrumb } from "../lib/sentry";
 
 export interface NativeRazorpayOptions {
@@ -186,63 +191,47 @@ const extractRazorpayError = normalizeNativeError;
  * sheet, and a regular Error for real failures (declined card, signature
  * mismatch, etc.) so callers can show the right UX.
  */
-export const openNativeRazorpayCheckout = async (
+/**
+ * Builds the options object handed to the native Razorpay SDK.
+ *
+ * Only fields the Android SDK actually understands are forwarded. In
+ * particular we drop:
+ *  - `config.display.blocks` — browser-only checkout layout
+ *  - `method` — passing a method map can restrict the sheet; omitting it lets
+ *    Razorpay show every method enabled on the account, which is what makes the
+ *    UPI section (with installed-app tiles) appear
+ *  - `prefill.method` — pre-selecting "upi" on native skips the app tiles
+ *  - `remember_customer` — web-only
+ */
+export const buildNativeCheckoutPayload = (
   options: NativeRazorpayOptions
-): Promise<RazorpaySuccessResponse> => {
-  let Checkout: any;
-  try {
-    ({ Checkout } = await import("capacitor-razorpay"));
-  } catch {
-    throw new Error(
-      "Native payment module is missing. Please update the app from the Play Store."
-    );
-  }
-
-  // The native SDK expects amount as a string of paise.
-  //
-  // IMPORTANT (UPI fix): the web checkout's `config.display.blocks` payload is
-  // a browser-only feature. The Razorpay Android/iOS SDK cannot serialise that
-  // nested structure and silently falls back to a card-only sheet — which is
-  // exactly the "APK me UPI option nahi aa raha" symptom. So we drop `config`
-  // here and instead ask the native SDK for the UPI *intent* flow, which is
-  // what launches PhonePe / GPay / Paytm directly (manifest `<queries>` for
-  // those schemes is already declared).
-  const { config: _webOnlyConfig, method } = options as NativeRazorpayOptions & {
-    config?: unknown;
-  };
-
-  const nativeMethod = {
-    ...(method ?? {}),
-    // Native APK must always keep UPI + fallback rails enabled. The web checkout
-    // display config can reorder methods, but Android SDK only needs method
-    // availability here; package visibility in AndroidManifest lets it discover
-    // installed UPI apps.
-    upi: true,
-    card: true,
-    netbanking: true,
-    wallet: true,
-  };
-
+): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
     key: options.key,
+    // The native SDK expects amount as a string of paise.
     amount: String(options.amount),
     currency: options.currency || "INR",
     name: options.name,
     description: options.description,
     order_id: options.order_id,
-    // Keep every method enabled; `upi: true` is required for the UPI tab to
-    // render at all in the native sheet. We deliberately do NOT pin
-    // `upi.flow = "intent"` — that hides the collect/VPA fallback when no UPI
-    // app is installed. Letting Razorpay decide gives the same UPI experience
-    // as the web checkout (installed apps first, VPA entry below).
-    method: nativeMethod,
-    modal: { confirm_close: true },
-    retry: { enabled: true, max_count: 2 },
   };
 
-  if (options.prefill) payload.prefill = options.prefill;
+  if (options.prefill) {
+    const prefill: Record<string, string> = {};
+    if (options.prefill.name) prefill.name = options.prefill.name;
+    if (options.prefill.email) prefill.email = options.prefill.email;
+    if (options.prefill.contact) prefill.contact = options.prefill.contact;
+    if (Object.keys(prefill).length > 0) payload.prefill = prefill;
+  }
   if (options.theme) payload.theme = options.theme;
 
+  return payload;
+};
+
+export const openNativeRazorpayCheckout = async (
+  options: NativeRazorpayOptions
+): Promise<RazorpaySuccessResponse> => {
+  const payload = buildNativeCheckoutPayload(options);
 
   let result: any;
   try {
@@ -256,12 +245,12 @@ export const openNativeRazorpayCheckout = async (
       key_mode: keyMode,
       amount: options.amount,
       currency: options.currency,
-      has_upi: Boolean((payload.method as Record<string, unknown>).upi),
       // Razorpay's recommended/preferred-methods block needs the customer
       // contact — track it so a missing number is visible in Sentry.
       has_contact: Boolean(options.prefill?.contact),
     });
-    result = await Checkout.open(payload);
+    const RazorpayNative = await loadRazorpayNative();
+    result = await RazorpayNative.open(payload);
   } catch (e: any) {
     const msg = e?.message || e?.errorMessage || String(e ?? "");
     if (looksLikeCancel(msg)) throw new RazorpayCancelledError();

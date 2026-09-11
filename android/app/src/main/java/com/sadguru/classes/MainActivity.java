@@ -27,11 +27,17 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // capacitor-razorpay auto-registers its plugin via Capacitor's plugin
-        // discovery (declared in package.json). Do NOT call registerPlugin()
-        // with com.razorpay.Checkout — that's the native Razorpay SDK class,
-        // not a Capacitor Plugin subclass, and won't compile.
+        // Our own Razorpay bridge (RazorpayNativePlugin) replaces the abandoned
+        // `capacitor-razorpay` package, which opened CheckoutActivity through a
+        // raw Intent and therefore never showed UPI app tiles. Capacitor requires
+        // registerPlugin() to run BEFORE super.onCreate().
+        registerPlugin(RazorpayNativePlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Warm up Razorpay so the payment-method list (including installed UPI
+        // apps) is resolved before the user taps Buy.
+        RazorpayNativePlugin.preload(getApplicationContext());
+
 
 
         // Hook the WebView's WebChromeClient so we can react to HTML5
@@ -87,6 +93,12 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Razorpay's SDK starts its own activity, so its result lands here.
+        if (requestCode == com.razorpay.Checkout.RZP_REQUEST_CODE) {
+            if (RazorpayNativePlugin.handleCheckoutResult(this, requestCode, resultCode, data)) {
+                return;
+            }
+        }
         if (requestCode == FILE_CHOOSER_REQUEST) {
             if (filePathCallback != null) {
                 Uri[] results = null;

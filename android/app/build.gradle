@@ -104,6 +104,10 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Razorpay Android SDK — pinned to an exact version on purpose. The old
+    // capacitor-razorpay plugin used the dynamic range '1.6.+', so two builds
+    // could ship different SDKs and behave differently on UPI.
+    implementation 'com.razorpay:checkout:1.6.41'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

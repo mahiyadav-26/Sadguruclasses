@@ -56,6 +56,14 @@ export default function UniversalFileViewer(props: Props) {
   const [saving, setSaving] = useState(false);
   const [savingLib, setSavingLib] = useState(false);
 
+  // LINK kind: open externally and bounce back.
+  // Declared before any early return so hook order stays stable.
+  useEffect(() => {
+    if (kind !== "LINK") return;
+    void openExternal(url);
+    setTimeout(onBack, 0);
+  }, [kind, url, onBack]);
+
   if (kind === "PDF" && isNotion(url)) return (
     <div className="fixed inset-0 z-50 bg-background">
       <NotionPageRenderer url={url} title={title} onClose={onBack} />
@@ -107,13 +115,6 @@ export default function UniversalFileViewer(props: Props) {
     : vimeoMatch
       ? `https://player.vimeo.com/video/${vimeoMatch[1]}`
       : null;
-
-  // LINK kind: open externally and bounce back
-  useEffect(() => {
-    if (kind !== "LINK") return;
-    void openExternal(url);
-    setTimeout(onBack, 0);
-  }, [kind, url, onBack]);
 
   if (kind === "LINK") return null;
 

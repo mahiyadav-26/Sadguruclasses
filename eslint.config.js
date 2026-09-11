@@ -5,7 +5,18 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "android", "ios", "boilerplate", "node_modules"] },
+  {
+    ignores: [
+      "dist",
+      "android",
+      "ios",
+      "boilerplate",
+      "node_modules",
+      // Vendored, unmodified pdf.js distribution — linting third-party build
+      // output produced 37 of the repo's lint errors and none are ours to fix.
+      "public/pdfjs/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -30,6 +41,11 @@ export default tseslint.config(
       "react-hooks/refs": "off",
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/immutability": "off",
+      // "Compilation Skipped: Existing memoization could not be preserved" is an
+      // optimization notice, not a defect — the React Compiler simply leaves the
+      // hand-written useCallback/useMemo in place. Kept visible as a warning so
+      // drift is tracked without failing CI over a non-bug.
+      "react-hooks/preserve-manual-memoization": "warn",
       "no-empty": "off",
       "no-useless-assignment": "off",
       "prefer-const": "off",
