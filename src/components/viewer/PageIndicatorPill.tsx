@@ -204,7 +204,7 @@ export default function PageIndicatorPill({
     // `targetRef.current` intentionally omitted: ref mutations don't re-render.
     // Mount sites remount this component (surfaceTick key) when the surface
     // resolves, which is what re-runs this effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [targetRef, compute, reveal]);
 
   // ── pdf.js iframe surface ───────────────────────────────────────────────

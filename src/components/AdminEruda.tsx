@@ -73,9 +73,9 @@ export default function AdminEruda() {
               };
             }
           } catch { /* noop */ }
-          // eslint-disable-next-line no-console
+           
           console.log("[admin] Eruda DevTools loaded for admin account.");
-          // eslint-disable-next-line no-console
+           
           console.info(
             "[admin] Frog-eye view active. Reload once to capture full boot logs (crashShield/sentry/web-vitals)."
           );
