@@ -20,6 +20,7 @@ import {
   RazorpayBridgeMissingError,
   RazorpayLaunchTimeoutError,
   NATIVE_LAUNCH_TIMEOUT_MS,
+  NATIVE_RESUME_TIMEOUT_MS,
   onWebViewBackgrounded,
   type NativeRazorpayOptions,
 } from "@/utils/razorpayNative";
@@ -91,6 +92,23 @@ describe("native checkout launch guards", () => {
     const promise = openNativeRazorpayCheckout(opts);
     await vi.advanceTimersByTimeAsync(NATIVE_LAUNCH_TIMEOUT_MS * 5);
     await expect(promise).resolves.toMatchObject({ razorpay_payment_id: "pay_1" });
+  });
+
+  it("stops waiting when the app is foregrounded again with no callback", async () => {
+    vi.useFakeTimers();
+    openMock.mockImplementation(() => new Promise(() => {}));
+    const setVisibility = (value: string) => {
+      Object.defineProperty(document, "visibilityState", { value, configurable: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    const promise = openNativeRazorpayCheckout(opts);
+    const assertion = expect(promise).rejects.toBeInstanceOf(RazorpayLaunchTimeoutError);
+    await vi.advanceTimersByTimeAsync(10);
+    setVisibility("hidden");
+    await vi.advanceTimersByTimeAsync(NATIVE_LAUNCH_TIMEOUT_MS * 3);
+    setVisibility("visible");
+    await vi.advanceTimersByTimeAsync(NATIVE_RESUME_TIMEOUT_MS + 10);
+    await assertion;
   });
 });
 

@@ -58,25 +58,37 @@ export class RazorpayLaunchTimeoutError extends Error {
 export const NATIVE_LAUNCH_TIMEOUT_MS = 8000;
 
 /**
- * Resolves as soon as the WebView stops being the foreground surface, which is
- * exactly what happens when Razorpay's checkout Activity comes up on top of
- * the app. We use it to cancel the launch watchdog: once the sheet is visibly
- * open the user may legitimately take minutes to pay.
+ * Grace period after the user comes back to the app. If the plugin still has
+ * not settled by then the checkout Activity is gone without a callback, so we
+ * stop waiting instead of leaving the CTA stuck on "Opening payment…".
  */
-export const onWebViewBackgrounded = (cb: () => void): (() => void) => {
+export const NATIVE_RESUME_TIMEOUT_MS = 6000;
+
+/**
+ * Tracks whether the WebView is the foreground surface.
+ *
+ * `hidden === true` means something (the Razorpay checkout Activity, a UPI app)
+ * is on top of us. `window.blur` is deliberately NOT used: on Android WebView
+ * it fires for keyboard focus changes and would disarm the watchdog while the
+ * sheet never actually opened.
+ */
+export const onWebViewVisibility = (
+  cb: (hidden: boolean) => void
+): (() => void) => {
   if (typeof document === "undefined") return () => {};
-  const fire = () => {
-    if (document.visibilityState === "hidden") cb();
-  };
+  const fire = () => cb(document.visibilityState === "hidden");
+  const hide = () => cb(true);
   document.addEventListener("visibilitychange", fire);
-  window.addEventListener("pagehide", cb);
-  window.addEventListener("blur", cb);
+  window.addEventListener("pagehide", hide);
   return () => {
     document.removeEventListener("visibilitychange", fire);
-    window.removeEventListener("pagehide", cb);
-    window.removeEventListener("blur", cb);
+    window.removeEventListener("pagehide", hide);
   };
 };
+
+/** @deprecated use {@link onWebViewVisibility}. */
+export const onWebViewBackgrounded = (cb: () => void): (() => void) =>
+  onWebViewVisibility((hidden) => { if (hidden) cb(); });
 
 export class RazorpayCancelledError extends Error {
   constructor() {
@@ -307,20 +319,32 @@ export const openNativeRazorpayCheckout = async (
 
     const RazorpayNative = await loadRazorpayNative();
     let launchTimer: ReturnType<typeof setTimeout> | undefined;
-    // The watchdog only covers the launch window. The moment the checkout
-    // Activity takes the foreground we disarm it, so a user who spends two
-    // minutes in their UPI app is never interrupted.
-    const stopWatching = onWebViewBackgrounded(() => {
-      if (launchTimer) { clearTimeout(launchTimer); launchTimer = undefined; }
-    });
+    let stopWatching: () => void = () => {};
     try {
       result = await Promise.race([
         RazorpayNative.open(payload),
         new Promise<never>((_, reject) => {
-          launchTimer = setTimeout(
-            () => reject(new RazorpayLaunchTimeoutError()),
-            NATIVE_LAUNCH_TIMEOUT_MS,
-          );
+          const arm = (ms: number) => {
+            if (launchTimer) clearTimeout(launchTimer);
+            launchTimer = setTimeout(
+              () => reject(new RazorpayLaunchTimeoutError()),
+              ms,
+            );
+          };
+          const disarm = () => {
+            if (launchTimer) { clearTimeout(launchTimer); launchTimer = undefined; }
+          };
+          // Launch window: the sheet must appear within a few seconds.
+          arm(NATIVE_LAUNCH_TIMEOUT_MS);
+          // While the checkout Activity (or a UPI app) is on top of us the
+          // user may legitimately take minutes, so the watchdog is disarmed.
+          // The moment we are foregrounded again it is re-armed with a short
+          // grace period: if the plugin still hasn't answered, the Activity
+          // died without a callback and we must not hang on "Opening payment…".
+          stopWatching = onWebViewVisibility((hidden) => {
+            if (hidden) disarm();
+            else arm(NATIVE_RESUME_TIMEOUT_MS);
+          });
         }),
       ]);
     } finally {
