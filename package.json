@@ -14,7 +14,9 @@
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "guard:all": "npm run guard:design && npm run guard:console",
     "guard:design": "node scripts/design-token-guard.cjs",
-    "guard:console": "node scripts/console-usage-guard.cjs"
+    "guard:console": "node scripts/console-usage-guard.cjs",
+    "fix:lockfile": "node scripts/fix-lockfile-registry.mjs",
+    "verify:capacitor-deps": "node scripts/verify-capacitor-deps.mjs"
   },
   "dependencies": {
     "@capacitor-community/file-opener": "7.0.1",
