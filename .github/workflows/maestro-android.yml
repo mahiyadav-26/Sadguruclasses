@@ -50,6 +50,12 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
 
+      # macOS runners ship no Android SDK, so `./gradlew assembleDebug` used to
+      # fail instantly with "SDK location not found". Install + license it here.
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
       - name: 📦 Install deps
         run: bun install --frozen-lockfile --ignore-scripts
 
