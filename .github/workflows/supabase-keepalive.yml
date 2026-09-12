@@ -21,9 +21,9 @@ jobs:
         id: ping
         run: |
           BASE="${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}"
-          ANON_KEY="${{ secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}"
+          ANON_KEY="${{ secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}"
           if [ -z "$BASE" ] || [ -z "$ANON_KEY" ]; then
-            echo "::error::Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY repo secret"
+            echo "::error::Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY/VITE_SUPABASE_PUBLISHABLE_KEY repo secret"
             exit 1
           fi
           # PostgREST root: returns 200 with the OpenAPI spec for any valid
