@@ -46,8 +46,13 @@ exists in the repository — only `VITE_SUPABASE_PUBLISHABLE_KEY` is configured.
 The ping therefore aborted before making any request and filed a false alert
 issue on every schedule.
 
-Fix: the workflow now also falls back to `VITE_SUPABASE_PUBLISHABLE_KEY`, which
-is the key PostgREST accepts for the read-only health check.
+Fix (two parts): the workflow now also falls back to
+`VITE_SUPABASE_PUBLISHABLE_KEY`, and the pass condition was corrected. The
+PostgREST root answers `401 Only the service_role API key can be used for this
+endpoint` to publishable/anon keys — a live response that the old strict 2xx
+check treated as an outage. The check now fails only on `000` (unreachable) or
+`5xx`, which is what a paused project actually returns.
+Verified: manual run on `405bb8cb` completed **success**.
 
 ### 3.2 Maestro Android E2E (nightly)
 
@@ -56,8 +61,16 @@ GitHub macOS images do not ship the Android SDK, so Gradle could not resolve an
 SDK location. The Ubuntu-based `build-apk` workflow installs the SDK explicitly,
 which is why release builds kept working.
 
-Fix: added `android-actions/setup-android@v3` (platform-tools, android-35,
-build-tools 35.0.0) before the Gradle step, matching the release build stack.
+Two distinct causes, both fixed:
+1. GitHub macOS images ship no Android SDK → added
+   `android-actions/setup-android@v3` (platform-tools, android-35,
+   build-tools 35.0.0) before the Gradle step.
+2. `android/gradlew` is not committed with the executable bit, so the next run
+   failed with `./gradlew: Permission denied` → the step now runs
+   `chmod +x ./gradlew` first (the Ubuntu release workflow already did this,
+   which is why release builds never hit it).
+Verified: on `476406a4` the debug APK build step completes **success** and the
+emulator/Maestro stage now runs.
 
 ## 4. Secrets configured (14, names only)
 
