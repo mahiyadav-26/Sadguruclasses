@@ -31,6 +31,53 @@ export interface RazorpaySuccessResponse {
   razorpay_signature: string;
 }
 
+/**
+ * The Android payment bridge is not present in the running build (typically an
+ * old APK installed on the device). Callers should silently fall back to the
+ * web checkout instead of leaving the user on a frozen screen.
+ */
+export class RazorpayBridgeMissingError extends Error {
+  constructor() {
+    super("Native Razorpay bridge unavailable");
+    this.name = "RazorpayBridgeMissingError";
+  }
+}
+
+/**
+ * The plugin call never settled — the payment sheet did not appear. Without
+ * this guard the promise hangs forever and the UI looks frozen.
+ */
+export class RazorpayLaunchTimeoutError extends Error {
+  constructor() {
+    super("Payment screen didn't open. Please update the app and try again.");
+    this.name = "RazorpayLaunchTimeoutError";
+  }
+}
+
+/** How long we wait for the native sheet before declaring it stuck. */
+export const NATIVE_LAUNCH_TIMEOUT_MS = 8000;
+
+/**
+ * Resolves as soon as the WebView stops being the foreground surface, which is
+ * exactly what happens when Razorpay's checkout Activity comes up on top of
+ * the app. We use it to cancel the launch watchdog: once the sheet is visibly
+ * open the user may legitimately take minutes to pay.
+ */
+export const onWebViewBackgrounded = (cb: () => void): (() => void) => {
+  if (typeof document === "undefined") return () => {};
+  const fire = () => {
+    if (document.visibilityState === "hidden") cb();
+  };
+  document.addEventListener("visibilitychange", fire);
+  window.addEventListener("pagehide", cb);
+  window.addEventListener("blur", cb);
+  return () => {
+    document.removeEventListener("visibilitychange", fire);
+    window.removeEventListener("pagehide", cb);
+    window.removeEventListener("blur", cb);
+  };
+};
+
 export class RazorpayCancelledError extends Error {
   constructor() {
     super("Payment cancelled");
@@ -249,9 +296,41 @@ export const openNativeRazorpayCheckout = async (
       // contact — track it so a missing number is visible in Sentry.
       has_contact: Boolean(options.prefill?.contact),
     });
+    // Fail fast when the APK predates the native bridge: registerPlugin()
+    // returns a proxy either way, so without this check the call can hang
+    // silently and the user just sees a frozen checkout screen.
+    const { Capacitor } = await import("@capacitor/core");
+    if (typeof Capacitor.isPluginAvailable === "function"
+      && !Capacitor.isPluginAvailable("RazorpayNative")) {
+      throw new RazorpayBridgeMissingError();
+    }
+
     const RazorpayNative = await loadRazorpayNative();
-    result = await RazorpayNative.open(payload);
+    let launchTimer: ReturnType<typeof setTimeout> | undefined;
+    // The watchdog only covers the launch window. The moment the checkout
+    // Activity takes the foreground we disarm it, so a user who spends two
+    // minutes in their UPI app is never interrupted.
+    const stopWatching = onWebViewBackgrounded(() => {
+      if (launchTimer) { clearTimeout(launchTimer); launchTimer = undefined; }
+    });
+    try {
+      result = await Promise.race([
+        RazorpayNative.open(payload),
+        new Promise<never>((_, reject) => {
+          launchTimer = setTimeout(
+            () => reject(new RazorpayLaunchTimeoutError()),
+            NATIVE_LAUNCH_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } finally {
+      if (launchTimer) clearTimeout(launchTimer);
+      stopWatching();
+    }
   } catch (e: any) {
+    // Structural failures are re-thrown untouched so the caller can react
+    // (fall back to web / show the "didn't open" message).
+    if (e instanceof RazorpayBridgeMissingError || e instanceof RazorpayLaunchTimeoutError) throw e;
     const msg = e?.message || e?.errorMessage || String(e ?? "");
     if (looksLikeCancel(msg)) throw new RazorpayCancelledError();
     // Preserve Razorpay's structured error (step / reason / code) so the
