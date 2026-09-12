@@ -40,11 +40,16 @@ jobs:
           echo "HTTP status: $STATUS"
           head -c 200 /tmp/resp.json || true
           echo ""
-          if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
+          # Any HTTP answer below 500 proves the project is awake and serving.
+          # Publishable/anon keys get 401 on the PostgREST root (service_role
+          # only), which is still a live response - the old strict 2xx check
+          # turned that into a false alert every 5 days. A paused or down
+          # project yields 000 (no connection) or a 5xx gateway error.
+          if [ -z "$STATUS" ] || [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
             echo "::error::Supabase keepalive failed with status $STATUS"
             exit 1
           fi
-          echo "Keepalive OK."
+          echo "Keepalive OK (status $STATUS)."
 
       - name: Open alert issue on failure
         if: failure()
