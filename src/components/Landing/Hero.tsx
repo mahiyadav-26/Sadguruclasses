@@ -38,29 +38,29 @@ const Hero = memo(({ data, stats = [] }: HeroProps) => {
       <div className="container mx-auto max-w-5xl px-5 md:px-8 pt-10 pb-14 md:pt-16 md:pb-20 text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
           <Sparkles className="h-4 w-4" aria-hidden />
-          Class 9–12 | Board | Spoken English | CG Lecturer
+          Class 9–12 | Board Exam Focus
         </span>
 
         <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight text-foreground leading-[1.08]">
-          {data?.title || "Learning Made Fun & Easy"}
+          {data?.title || "Board Exam Ki Taiyari, Ab Puri Strategy Ke Saath."}
         </h1>
 
         <p className="mt-5 text-lg md:text-xl font-semibold text-foreground/80 max-w-2xl mx-auto">
-          Hindi medium students ke liye India ka sabse affordable board &amp; competitive prep platform.
+          Hindi medium students ke liye India ka sabse affordable board exam prep platform.
         </p>
 
         <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           {data?.subtitle ||
-            "Sadguru Coaching Classes ke saath — Ramchandra Sir ki guidance mein interactive courses, live classes aur daily doubt-solving."}
+            "Class 9–12 ke liye chapter-wise lessons, revision notes, practice papers aur regular tests — Hindi mein simple explanation ke saath."}
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to="/signup" onClick={() => { void tapHaptic("light"); }} className="sm:w-auto">
+          <Link to="/courses" onClick={() => { void tapHaptic("light"); }} className="sm:w-auto">
             <Button
               size="lg"
               className="h-13 w-full sm:w-auto px-10 rounded-xl text-base font-bold gap-2 active:scale-[0.97] transition-transform duration-150"
             >
-              {data?.cta_text || "Start Learning Today"}
+              {data?.cta_text || "Board Courses Dekhein"}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -85,7 +85,7 @@ const Hero = memo(({ data, stats = [] }: HeroProps) => {
             srcAvif={heroImageAvif}
             srcWebp={heroImageWebp}
             srcFallback={heroImage}
-            alt="Sadguru Coaching Classes ke students padhte hue"
+            alt="Sadguru Coaching Classes ke students board exam ki taiyari karte hue"
             width={1280}
             height={800}
             className="w-full h-auto object-cover"

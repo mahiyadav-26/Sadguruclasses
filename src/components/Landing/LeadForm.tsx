@@ -1,120 +1,128 @@
 import { useState, memo, useCallback } from "react";
-import { reportError } from "@/lib/sentry";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { toast } from "../ui/use-toast";
-import { ArrowRight } from "lucide-react";
-import { supabase } from "../../integrations/supabase/client";
-import { getErrorMessage } from "@/lib/errorMessage";
+import { Label } from "../ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { tapHaptic } from "@/lib/native/haptics";
 
-const grades = ["9", "10", "11", "12", "CG Lecturer Aspirant"];
+const grades = ["9", "10", "11", "12"];
 
 const LeadForm = memo(() => {
-  const [formData, setFormData] = useState({ studentName: "", email: "", grade: "" });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [grade, setGrade] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleInputChange = useCallback((field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.studentName || !formData.email || !formData.grade) {
-      toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({ title: "Sign in required", description: "Please sign in to book a free demo.", variant: "destructive" });
-        setIsSubmitting(false);
+  const submit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!name.trim() || !phone.trim() || !grade) {
+        toast.error("Sab fields bharein");
         return;
       }
-      const { error } = await supabase.from('leads').insert([{
-        student_name: formData.studentName,
-        email: formData.email,
-        grade: formData.grade,
-        user_id: user.id,
-      }]);
-      if (error) throw error;
-      toast({ title: "Success", description: "Request received!" });
-      setFormData({ studentName: "", email: "", grade: "" });
-    } catch (error: unknown) {
-      reportError(error, { surface: "LeadForm.submit" });
-      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [formData]);
+      setLoading(true);
+      try {
+        const { error } = await supabase.from("leads").insert({
+          name: name.trim(),
+          phone: phone.trim(),
+          grade,
+          source: "homepage_board_exam",
+          user_id: user?.id ?? null,
+        });
+        if (error) throw error;
+        toast.success("Shukriya! Hamari team jaldi contact karegi.");
+        setName("");
+        setPhone("");
+        setGrade("");
+      } catch (err) {
+        toast.error("Kuchh galat ho gaya. Dobara koshish karein.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [name, phone, grade, user]
+  );
 
   return (
-    <section className="py-20 md:py-28 bg-secondary text-secondary-foreground">
-      <div className="container mx-auto max-w-7xl px-6 lg:px-10">
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          <div className="lg:col-span-6 space-y-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-accent font-medium">Start today</p>
-            <h2
-              className="font-serif text-4xl md:text-5xl lg:text-6xl leading-[1.05]"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
-              Class 9–12 aur CG Lecturer — shuruaat aaj karein.
+    <section className="py-16 md:py-20 bg-muted/30 border-y border-border/60">
+      <div className="container mx-auto max-w-5xl px-5 md:px-8">
+        <div className="grid md:grid-cols-2 gap-10 items-center">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground leading-tight">
+              Free counselling session book karein
             </h2>
-            <p className="text-lg text-secondary-foreground/70 max-w-lg leading-relaxed">
-              Book a free demo class. Meet Ramchandra Sir and the Sadguru Coaching Classes faculty. Dekhein
-              kaise structured English + CG Lecturer competition prep aapke result badal sakta hai.
+            <p className="mt-4 text-base md:text-lg text-muted-foreground leading-relaxed">
+              Class 9–12 — shuruaat aaj karein. Hamari team aapko board exam strategy, schedule aur
+              course fit batayegi.
             </p>
+            <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2">• Free 15-minute strategy call</li>
+              <li className="flex items-center gap-2">• Personal study plan</li>
+              <li className="flex items-center gap-2">• Fee structure aur batches ki jaankari</li>
+            </ul>
           </div>
 
-          <div className="lg:col-span-6">
-            <form
-              onSubmit={handleSubmit}
-              className="bg-background text-foreground p-8 md:p-10 rounded-sm border border-border space-y-5"
+          <form
+            onSubmit={submit}
+            className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5"
+          >
+            <div>
+              <Label htmlFor="lead-name">Student ka naam</Label>
+              <Input
+                id="lead-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Aapka naam"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="lead-phone">Phone number</Label>
+              <Input
+                id="lead-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="10-digit mobile number"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="lead-grade">Class</Label>
+              <Select value={grade} onValueChange={setGrade}>
+                <SelectTrigger id="lead-grade">
+                  <SelectValue placeholder="Class chunein" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grades.map((g) => (
+                    <SelectItem key={g} value={g}>Class {g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+              onClick={() => void tapHaptic("light")}
             >
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Full Name</label>
-                <Input
-                  placeholder="Your name"
-                  value={formData.studentName}
-                  onChange={(e) => handleInputChange("studentName", e.target.value)}
-                  className="h-12 rounded-sm border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Email</label>
-                <Input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="h-12 rounded-sm border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Class</label>
-                <Select value={formData.grade} onValueChange={(val) => handleInputChange("grade", val)}>
-                  <SelectTrigger className="h-12 rounded-sm border-border">
-                    <SelectValue placeholder="Select class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {grades.map((g) => (
-                      <SelectItem key={g} value={g}>{g === "CG Lecturer Aspirant" ? g : `Class ${g}`}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-12 rounded-sm text-base font-medium gap-2"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Sending…" : "Book free demo"}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-          </div>
+              {loading ? "Bhej rahe hain..." : "Free counselling book karein"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Submit karne se aap hamari privacy policy se sahmat hain.
+            </p>
+          </form>
         </div>
       </div>
     </section>

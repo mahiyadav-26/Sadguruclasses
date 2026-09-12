@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Play, Send } from "lucide-react";
+import { Play } from "lucide-react";
 import Picture from "../ui/Picture";
 import mentorUrl from "../../assets/landing/mentor-portrait.jpg";
 import mentorWebp from "../../assets/landing/mentor-portrait.webp";
@@ -9,14 +9,6 @@ import studentGirlWebp from "../../assets/landing/student-portrait.webp";
 import studentGirlAvif from "../../assets/landing/student-portrait.avif";
 import { selectionHaptic } from "@/lib/native/haptics";
 
-/**
- * Dual-bubble hero: student girl (large, top-right) + Ramchandra Sir (medium,
- * bottom-left) with two chat bubbles and floating micro-badges.
- * - Percent-based offsets → scales cleanly 320px → 560px, no overflow.
- * - Safe-area padding on the outer wrapper for notched landscape.
- * - Soft-touch press feedback + light haptic on interactive bubbles.
- * - Respects prefers-reduced-motion.
- */
 const scrollToCourses = () => {
   void selectionHaptic();
   document.getElementById("courses")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -28,7 +20,6 @@ const HeroIllustration = memo(() => (
                pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
   >
     <div className="relative w-full aspect-[5/4] select-none">
-      {/* Soft brand glow behind everything */}
       <div
         className="absolute inset-[8%] rounded-full
                    bg-[radial-gradient(circle_at_30%_30%,hsl(var(--primary)/0.22),hsl(var(--accent)/0.14)_45%,transparent_70%)]
@@ -36,7 +27,6 @@ const HeroIllustration = memo(() => (
         aria-hidden
       />
 
-      {/* -------- Student girl — large, top-right -------- */}
       <div className="absolute top-0 right-0 w-[54%] aspect-square animate-fade-in-up [animation-delay:0.1s]">
         <div
           className="absolute inset-0 rounded-full overflow-hidden ring-1 ring-primary/25 bg-primary/5
@@ -46,7 +36,7 @@ const HeroIllustration = memo(() => (
             srcAvif={studentGirlAvif}
             srcWebp={studentGirlWebp}
             srcFallback={studentGirlUrl}
-            alt="Sadguru Coaching Classes student practising spoken English"
+            alt="Sadguru Coaching Classes student preparing for board exams"
             width={768}
             height={768}
             priority
@@ -54,19 +44,16 @@ const HeroIllustration = memo(() => (
             className="h-full w-full object-cover object-top"
           />
         </div>
-
-        {/* floating paper-plane badge — bottom-right of girl */}
         <div
           aria-hidden
-          className="absolute -bottom-1 -right-1 h-9 w-9 rounded-xl bg-sky-500 text-white
-                     flex items-center justify-center shadow-lg shadow-sky-500/40
+          className="absolute -bottom-1 -right-1 h-9 w-9 rounded-xl bg-primary text-primary-foreground
+                     flex items-center justify-center shadow-lg shadow-primary/40
                      animate-[bounce_3.2s_ease-in-out_infinite] motion-reduce:animate-none"
         >
-          <Send className="h-4 w-4" />
+          <Play className="h-4 w-4 fill-current" />
         </div>
       </div>
 
-      {/* -------- Chat bubble — "kaise seekhun?" (overlaps girl's lower-left, as if she's asking) -------- */}
       <button
         type="button"
         onClick={scrollToCourses}
@@ -77,12 +64,10 @@ const HeroIllustration = memo(() => (
                    active:scale-[0.97] transition-transform duration-150 ease-out
                    animate-fade-in-up [animation-delay:0.35s]"
       >
-        Ramchandra Sir, English<br />kaise seekhun?
+        Ramchandra Sir, board exam<br />mein top kaise karun?
       </button>
 
-      {/* -------- Ramchandra Sir — medium, bottom-left -------- */}
       <div className="absolute bottom-0 left-[4%] w-[44%] aspect-square animate-fade-in-up [animation-delay:0.2s]">
-        {/* outer dashed rotating accent ring around Ramchandra Sir — crisp SVG */}
         <svg
           className="absolute -inset-[6%] w-[112%] h-[112%] motion-safe:animate-[spin_22s_linear_infinite] motion-reduce:animate-none drop-shadow-[0_2px_6px_hsl(var(--primary)/0.25)]"
           viewBox="0 0 100 100"
@@ -115,8 +100,6 @@ const HeroIllustration = memo(() => (
             className="h-full w-full object-cover object-top"
           />
         </div>
-
-        {/* floating play badge — top-left of Ramchandra Sir */}
         <div
           aria-hidden
           className="absolute -top-1 -left-1 h-9 w-9 rounded-xl bg-emerald-500 text-white
@@ -127,7 +110,6 @@ const HeroIllustration = memo(() => (
         </div>
       </div>
 
-      {/* -------- Chat bubble — "Sadguru Coaching Classes ke saath..." (bottom-right, below girl) -------- */}
       <button
         type="button"
         onClick={scrollToCourses}
@@ -138,7 +120,7 @@ const HeroIllustration = memo(() => (
                    active:scale-[0.97] transition-transform duration-150 ease-out
                    animate-fade-in-up [animation-delay:0.5s]"
       >
-        Sadguru Coaching Classes ke Saath<br />Confidence ke saath English bolna seekhein.
+        Sadguru Coaching Classes ke Saath<br />Board exam ke liye confident banein.
       </button>
     </div>
   </div>

@@ -2,13 +2,12 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 
-// Editorial "Featured Courses" strip — DeepLearning.AI style
 const featured = [
   {
-    tag: "CG Lecturer · English",
-    title: "CG Lecturer Competition — Full Prep",
+    tag: "Class 10 · All Subjects",
+    title: "Class 10 Board Exam — Complete Prep",
     instructor: "Ramchandra Sir",
-    duration: "16 weeks · 120+ lessons",
+    duration: "Full syllabus · revision + mocks",
   },
   {
     tag: "Class 12 · English",
@@ -17,8 +16,8 @@ const featured = [
     duration: "10 weeks · 72 lessons",
   },
   {
-    tag: "Class 9–11 · English",
-    title: "Foundation Spoken English & Grammar",
+    tag: "Class 9–11 · Foundation",
+    title: "Class 9–11 Strong Foundation Batch",
     instructor: "Sadguru Coaching Classes Faculty",
     duration: "12 weeks · 90 lessons",
   },
@@ -34,7 +33,7 @@ const Subjects = memo(() => (
             className="font-serif text-4xl md:text-5xl text-foreground leading-[1.1]"
             style={{ fontFamily: "var(--font-serif)" }}
           >
-            Class 9–12 aur CG Lecturer ki taiyari — ek jagah.
+            Class 9–12 Board Exam ki taiyari — ek jagah.
           </h2>
         </div>
         <Link

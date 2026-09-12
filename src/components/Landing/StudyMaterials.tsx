@@ -8,9 +8,9 @@ import materialsImageWebp from "../../assets/landing/study-materials.webp";
 import materialsImageAvif from "../../assets/landing/study-materials.avif";
 
 const resources = [
-  { tag: "Notes", title: "Class 9–12 English — Complete Grammar Notes", desc: "Chapter-wise summaries, examples aur exam-ready practice sets." },
-  { tag: "Practice", title: "Spoken English Daily Workbook", desc: "1,200+ real-life sentences, Hindi meaning ke saath." },
-  { tag: "Mock Tests", title: "CG Lecturer — Full Mock Series", desc: "Timed mock papers, detailed analysis aur topic-wise scoring." },
+  { tag: "Notes", title: "Class 9–12 Board Notes", desc: "Chapter-wise summaries, important questions aur exam-ready practice sets." },
+  { tag: "Practice", title: "Previous Year Question Bank", desc: "Board exam ke solved papers aur marking scheme ke hisaab se answers." },
+  { tag: "Mock Tests", title: "Full Syllabus Mock Tests", desc: "Timed mock papers, detailed analysis aur topic-wise scoring." },
 ];
 
 const StudyMaterials = memo(() => (
@@ -21,7 +21,7 @@ const StudyMaterials = memo(() => (
           Premium Study Materials
         </h2>
         <p className="mt-3 text-base md:text-lg text-muted-foreground">
-          Notes, workbooks aur mock tests — bilkul free.
+          Notes, question bank aur mock tests — bilkul free.
         </p>
       </div>
 

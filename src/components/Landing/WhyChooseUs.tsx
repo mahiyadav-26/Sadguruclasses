@@ -7,9 +7,9 @@ import mentorImageAvif from "../../assets/landing/mentor-portrait.avif";
 
 const points = [
   { t: "Hindi-medium friendly", d: "Har lesson Hindi mein samjhaya — jhijhak khatam, seekhna aasan." },
-  { t: "Practical spoken English", d: "Real daily-use sentences, roleplay aur situations — sirf grammar rules nahin." },
+  { t: "Board-focused lessons", d: "Syllabus ke hisaab se chapter-wise videos, notes aur practice papers." },
   { t: "Daily practice + doubts", d: "Roz ka chota task aur live doubt-clearing Ramchandra Sir ke saath." },
-  { t: "Board + interview ready", d: "Class 9–12 English, competitive English aur interview confidence — ek jagah." },
+  { t: "Revision + mock tests", d: "Regular tests aur full-length mocks se exam confidence aur time management dono improve." },
 ];
 
 const WhyChooseUs = memo(() => (

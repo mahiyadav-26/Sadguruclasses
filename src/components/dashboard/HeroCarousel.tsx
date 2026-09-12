@@ -10,12 +10,12 @@ import { openResource } from "../../lib/openResource";
 const FALLBACK_BANNERS: HeroBanner[] = [
   {
     id: "1",
-    title: "GET 40% OFF On All Batches!",
-    subtitle: "Limited Time Offer",
-    description: "Enroll now in JEE & NEET Foundation courses. Top faculty, proven results.",
+    title: "Board Exam 2025 — Complete Revision Batch",
+    subtitle: "New Batch Starting Soon",
+    description: "Class 10 & 12 ke liye chapter-wise revision, important questions aur full mock tests.",
     image_url: null,
     bg_color: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-    badge_text: "🎉 Special Offer",
+    badge_text: "🎉 Board Exam 2025",
     cta_text: "Enroll Now",
     cta_link: "/courses",
     position: 0,
@@ -25,12 +25,12 @@ const FALLBACK_BANNERS: HeroBanner[] = [
   },
   {
     id: "2",
-    title: "NEET 2026 Target Batch",
-    subtitle: "New Batch Starting Soon",
-    description: "Comprehensive coverage of Physics, Chemistry & Biology by expert faculty.",
+    title: "Class 10 Maths & Science Crash Course",
+    subtitle: "Score 90+ in Board Exams",
+    description: "Formula tricks, previous year questions aur timed practice — Hindi mein simple explanation.",
     image_url: null,
     bg_color: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
-    badge_text: "🔬 NEET 2026",
+    badge_text: "🔬 Class 10",
     cta_text: "Register Now",
     cta_link: "/courses",
     position: 1,
@@ -42,7 +42,7 @@ const FALLBACK_BANNERS: HeroBanner[] = [
     id: "3",
     title: "Free Scholarship Test!",
     subtitle: "Upto 100% Fee Waiver",
-    description: "Attempt our online scholarship test and win upto 100% fee waiver.",
+    description: "Attempt our online scholarship test and win upto 100% fee waiver on board exam batches.",
     image_url: null,
     bg_color: "linear-gradient(135deg, #059669 0%, #047857 100%)",
     badge_text: "🏆 Scholarship",
@@ -71,7 +71,6 @@ export default function HeroCarousel() {
   const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
   const scrollTo = useCallback((i: number) => emblaApi?.scrollTo(i), [emblaApi]);
 
-  // Track current slide
   useEffect(() => {
     if (!emblaApi) return;
     const onSelect = () => setCurrentIndex(emblaApi.selectedScrollSnap());
@@ -79,7 +78,6 @@ export default function HeroCarousel() {
     return () => { emblaApi.off("select", onSelect); };
   }, [emblaApi]);
 
-  // Auto-slide
   useEffect(() => {
     if (!emblaApi) return;
     const start = () => {
@@ -94,7 +92,6 @@ export default function HeroCarousel() {
   const handleCTA = (banner: HeroBanner) => {
     const link = banner.cta_link || "/courses";
     if (link.startsWith("http://") || link.startsWith("https://")) {
-      // Only allow https to prevent javascript:/data: injection via admin-controlled DB field.
       if (!link.startsWith("https://")) {
         console.warn("[HeroCarousel] Blocked non-https CTA link:", link);
         return;
@@ -120,7 +117,6 @@ export default function HeroCarousel() {
       onMouseEnter={() => { isPaused.current = true; }}
       onMouseLeave={() => { isPaused.current = false; }}
     >
-      {/* Embla viewport */}
       <div ref={emblaRef} className="overflow-hidden rounded-2xl">
         <div className="flex touch-pan-y">
           {banners.map((banner, idx) => (
@@ -134,7 +130,6 @@ export default function HeroCarousel() {
         </div>
       </div>
 
-      {/* Arrow: Prev */}
       {banners.length > 1 && (
         <>
           <button
@@ -145,7 +140,6 @@ export default function HeroCarousel() {
             <ChevronLeft className="h-4 w-4" />
           </button>
 
-          {/* Arrow: Next */}
           <button
             onClick={scrollNext}
             className="hidden sm:block absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white rounded-full p-1.5 transition-all backdrop-blur-sm"
@@ -155,7 +149,6 @@ export default function HeroCarousel() {
           </button>
 
 
-          {/* Dot indicators */}
           <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 pointer-events-auto">
             {banners.map((_, i) => (
               <button

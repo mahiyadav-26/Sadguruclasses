@@ -1,13 +1,13 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Mic, PenLine, GraduationCap, Trophy } from "lucide-react";
+import { BookOpen, PenLine, GraduationCap, Calculator, FlaskConical } from "lucide-react";
 
 const streams = [
-  { icon: BookOpen, label: "Board English", tint: "bg-primary/10 text-primary" },
-  { icon: Mic, label: "Spoken English", tint: "bg-emerald-500/10 text-emerald-600" },
-  { icon: PenLine, label: "Grammar & Writing", tint: "bg-amber-500/10 text-amber-600" },
-  { icon: GraduationCap, label: "Class 9–12", tint: "bg-violet-500/10 text-violet-600" },
-  { icon: Trophy, label: "CG Lecturer", tint: "bg-pink-500/10 text-pink-600" },
+  { icon: GraduationCap, label: "Class 9–10", tint: "bg-primary/10 text-primary" },
+  { icon: BookOpen, label: "Class 11–12", tint: "bg-violet-500/10 text-violet-600" },
+  { icon: PenLine, label: "English & Writing", tint: "bg-amber-500/10 text-amber-600" },
+  { icon: Calculator, label: "Maths Practice", tint: "bg-emerald-500/10 text-emerald-600" },
+  { icon: FlaskConical, label: "Science Revision", tint: "bg-sky-500/10 text-sky-600" },
 ];
 
 const StreamsWeOffer = memo(() => (
@@ -18,7 +18,7 @@ const StreamsWeOffer = memo(() => (
           Streams We Offer
         </h2>
         <p className="mt-3 text-base md:text-lg text-muted-foreground">
-          Board exams se lekar competitive papers tak — har stream ki poori taiyari.
+          Board exams ke liye har subject ki poori taiyari — ek hi platform par.
         </p>
       </div>
 

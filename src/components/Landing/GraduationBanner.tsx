@@ -21,7 +21,7 @@ const GraduationBanner = memo(() => {
             {learners} students already learning with Sadguru Coaching Classes.
           </h2>
           <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto">
-            Board exams, CG Lecturer prep ya spoken confidence — aaj signup karein aur pehla lesson free dekhein.
+            Board exam prep ke liye aaj signup karein aur pehla lesson free dekhein.
           </p>
           <Link to="/signup">
             <Button size="lg" className="gap-2 mt-2">

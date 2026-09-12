@@ -1,64 +1,41 @@
-import { forwardRef } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../integrations/supabase/client";
+import { useMemo } from "react";
+import { useSocialLinks } from "../../hooks/useSocialLinks";
+import { Youtube } from "lucide-react";
 
-const ICON_MAP: Record<string, { label: string; icon: string }> = {
-  whatsapp_url: { label: "WhatsApp", icon: "💬" },
-  telegram_url: { label: "Telegram", icon: "✈️" },
-  instagram_url: { label: "Instagram", icon: "📸" },
-  twitter_url: { label: "Twitter", icon: "🐦" },
-  youtube_url: { label: "YouTube", icon: "🎬" },
-  facebook_url: { label: "Facebook", icon: "📘" },
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  youtube: Youtube,
 };
 
-const KEYS = Object.keys(ICON_MAP);
+export default function SocialLinks() {
+  const { data: links, isLoading } = useSocialLinks();
 
-const SocialLinks = forwardRef<HTMLDivElement>((_, ref) => {
-  const { data: links = [] } = useQuery({
-    queryKey: ["site_settings", "social_links"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("key, value")
-        .in("key", KEYS);
-      if (error) throw error;
-      return (data ?? []).filter(
-        (r: { key: string; value: string | null }) => !!r.value && r.value.trim() !== ""
-      ) as { key: string; value: string }[];
-    },
-    // Landing-page chrome — safe to cache aggressively; admin updates
-    // propagate on next cold load / manual refresh.
-    staleTime: 60 * 60 * 1000, // 1h
-    gcTime: 24 * 60 * 60 * 1000, // 24h
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  const visible = useMemo(
+    () =>
+      (links || []).filter(
+        (l) => l.is_active && l.platform.toLowerCase() !== "telegram"
+      ),
+    [links]
+  );
 
-  if (links.length === 0) return null;
+  if (isLoading || visible.length === 0) return null;
 
   return (
-    <div ref={ref} className="flex items-center gap-3 flex-wrap">
-      {links.map((link) => {
-        const info = ICON_MAP[link.key];
-        if (!info) return null;
+    <div className="flex items-center gap-3">
+      {visible.map((link) => {
+        const Icon = iconMap[link.platform.toLowerCase()] || Youtube;
         return (
           <a
-            key={link.key}
-            href={link.value}
+            key={link.id}
+            href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 hover:bg-primary/10 text-sm text-muted-foreground hover:text-primary transition-colors"
-            title={info.label}
+            aria-label={link.platform}
+            className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-white/10 transition-colors"
           >
-            <span>{info.icon}</span>
-            <span className="hidden sm:inline">{info.label}</span>
+            <Icon className="h-4 w-4" />
           </a>
         );
       })}
     </div>
   );
-});
-
-SocialLinks.displayName = "SocialLinks";
-
-export default SocialLinks;
+}

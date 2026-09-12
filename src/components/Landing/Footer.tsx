@@ -1,6 +1,6 @@
 import { useMemo, forwardRef } from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, Shield, ArrowUpRight, Sparkles, Youtube, Send } from "lucide-react";
+import { Mail, Phone, Shield, ArrowUpRight, Sparkles, Youtube } from "lucide-react";
 import logoIcon from "../../assets/branding/nb-mark.webp";
 import { WHATSAPP_NUMBER } from "../common/WhatsAppButton";
 
@@ -13,7 +13,7 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
       title: "Learn",
       links: [
         { l: "All Courses", to: "/courses" },
-        { l: "CG Lecturer Prep", to: "/courses" },
+        { l: "Class 9–10", to: "/courses" },
         { l: "Class 11–12", to: "/courses" },
         { l: "Live Classes", to: "/courses" },
       ],
@@ -74,7 +74,7 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
               className="text-2xl md:text-3xl leading-tight"
               style={{ fontFamily: "var(--font-serif)" }}
             >
-              Serious English. Serious results.
+              Board exams ke liye serious prep. Serious results.
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -116,35 +116,21 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
               </span>
             </div>
             <p className="text-sm text-secondary-foreground/60 leading-relaxed max-w-xs">
-              Roz ek chhota kadam, bada change. Ramchandra Sir ke saath 599+ free spoken English
-              lessons, plus live doubt classes and structured courses — sab kuch app ke andar.
+              Roz ek chhota kadam, bada change. Ramchandra Sir ke saath Class 9–12 board exam
+              preparation — live classes, revision notes, mock tests aur doubt support — sab kuch app ke andar.
             </p>
 
             <div className="flex items-center gap-3 pt-2">
-              {[
-                {
-                  href: "https://www.youtube.com/channel/UCJig1qwQQN3doNzobNDlB_A",
-                  label: "Watch Sadguru Coaching Classes on YouTube",
-                  icon: Youtube,
-                },
-                {
-                  href: "https://t.me/sadgurucoachingclasses",
-                  label: "Join Sadguru Coaching Classes on Telegram",
-                  icon: Send,
-                },
-              ].map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-11 w-11 rounded-lg bg-white/5 border border-white/10 hover:border-white/25 hover:scale-105 transition-all flex items-center justify-center"
-                  aria-label={s.label}
-                  title={s.label}
-                >
-                  <s.icon aria-hidden="true" className="h-5 w-5 text-secondary-foreground" />
-                </a>
-              ))}
+              <a
+                href="https://www.youtube.com/channel/UCJig1qwQQN3doNzobNDlB_A"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-11 w-11 rounded-lg bg-white/5 border border-white/10 hover:border-white/25 hover:scale-105 transition-all flex items-center justify-center"
+                aria-label="Watch Sadguru Coaching Classes on YouTube"
+                title="Watch Sadguru Coaching Classes on YouTube"
+              >
+                <Youtube aria-hidden="true" className="h-5 w-5 text-secondary-foreground" />
+              </a>
             </div>
           </div>
 

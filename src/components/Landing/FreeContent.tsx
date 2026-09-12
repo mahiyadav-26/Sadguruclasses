@@ -5,18 +5,18 @@ import { FileText, ClipboardList, ArrowUpRight, Download } from "lucide-react";
 
 
 const freePdfs = [
-  { title: "UP Board English — Grammar Handbook", meta: "PDF · 42 pages", href: "/books" },
-  { title: "CBSE Class 10 — Letter Writing Formats", meta: "PDF · 18 pages", href: "/books" },
-  { title: "CG Lecturer — Linguistics Notes", meta: "PDF · 64 pages", href: "/books" },
-  { title: "Spoken English — 300 Daily Sentences", meta: "PDF · 24 pages", href: "/books" },
-  { title: "Unseen Passage Practice Set", meta: "PDF · 30 pages", href: "/books" },
-  { title: "Tenses Quick Revision Sheet", meta: "PDF · 8 pages", href: "/books" },
+  { title: "UP Board Class 10 — Science Notes", meta: "PDF · 42 pages", href: "/books" },
+  { title: "CBSE Class 10 — Maths Formula Sheet", meta: "PDF · 18 pages", href: "/books" },
+  { title: "Class 12 English — Writing Formats", meta: "PDF · 24 pages", href: "/books" },
+  { title: "Social Science — Important Dates & Maps", meta: "PDF · 30 pages", href: "/books" },
+  { title: "Hindi Grammar — Quick Revision", meta: "PDF · 16 pages", href: "/books" },
+  { title: "Board Exam Time Management Tips", meta: "PDF · 8 pages", href: "/books" },
 ];
 
 const freeTests = [
-  { title: "UP Board English — Mock 1", meta: "30 questions · 30 min", href: "/courses" },
-  { title: "CBSE Grammar — Diagnostic Test", meta: "25 questions · 20 min", href: "/courses" },
-  { title: "CG Lecturer — Literature PYQ Quiz", meta: "40 questions · 45 min", href: "/courses" },
+  { title: "Class 10 Maths — Full Syllabus Mock", meta: "30 questions · 60 min", href: "/courses" },
+  { title: "Class 10 Science — Diagnostic Test", meta: "25 questions · 30 min", href: "/courses" },
+  { title: "Class 12 English — Writing Practice", meta: "40 questions · 45 min", href: "/courses" },
 ];
 
 const FreeContent = memo(() => (

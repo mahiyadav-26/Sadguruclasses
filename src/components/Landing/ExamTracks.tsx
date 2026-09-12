@@ -5,129 +5,124 @@ import { useLandingCourses } from "@/hooks/useLandingCourses";
 import CountdownPill from "./CountdownPill";
 import { tapHaptic, selectionHaptic } from "@/lib/native/haptics";
 
-// Gradient ribbon per track — infers from badge/title keywords so the
-// admin doesn't have to pick a color. Semantic-only, no raw hex.
 const ribbonFor = (label: string): string => {
   const s = label.toLowerCase();
   if (s.includes("up")) return "from-indigo-500 to-blue-500";
   if (s.includes("cbse")) return "from-emerald-500 to-teal-500";
-  if (s.includes("cg") || s.includes("lecturer")) return "from-amber-500 to-orange-500";
-  if (s.includes("spoken") || s.includes("english")) return "from-rose-500 to-pink-500";
+  if (s.includes("class 9") || s.includes("class 10")) return "from-primary to-accent";
+  if (s.includes("class 11") || s.includes("class 12")) return "from-violet-500 to-purple-500";
   return "from-primary to-accent";
 };
 
 const ExamTracks = memo(() => {
-  const { data: tracks = [], isLoading } = useLandingCourses();
+  const { data: allTracks = [], isLoading } = useLandingCourses();
+
+  // Hide legacy CG Lecturer / Spoken English tracks from the Board Exam homepage.
+  const tracks = allTracks.filter((t) => {
+    const label = `${t.badge} ${t.title}`.toLowerCase();
+    return !label.includes("spoken") && !label.includes("cg-lecturer") && !label.includes("cg lecturer");
+  });
 
   return (
     <section className="py-20 md:py-28 bg-background">
-      <div className="container mx-auto max-w-7xl px-6 lg:px-10">
-        <div className="max-w-2xl mb-10 md:mb-14">
-          <p className="eyebrow mb-4">Live batches</p>
-          <h2
-            className="font-serif text-display-sm md:text-display-md text-foreground leading-[1.05]"
-            style={{ fontFamily: "var(--font-serif)" }}
+      <div className="container mx-auto max-w-5xl px-5 md:px-8">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+              Featured Board Exam Batches
+            </h2>
+            <p className="mt-3 text-base md:text-lg text-muted-foreground">
+              Class 9–12 ke liye curated courses — live classes, notes aur tests ke saath.
+            </p>
+          </div>
+          <Link
+            to="/courses"
+            onClick={() => void tapHaptic("light")}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
-            Apne exam ke liye ek dedicated batch chunein.
-          </h2>
-          <p className="text-muted-foreground mt-4 text-base md:text-lg leading-relaxed">
-            Ramchandra Sir ke saath — Hindi medium friendly, chapter-wise videos, weekly tests aur doubt support.
-          </p>
+            Sab courses dekhein <ArrowUpRight className="h-4 w-4" />
+          </Link>
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-72 rounded-2xl bg-muted/60 animate-pulse" />
+          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-64 rounded-2xl bg-muted animate-pulse" />
             ))}
           </div>
         ) : tracks.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-            Abhi koi batch active nahi hai. Admin panel se add karein.
+          <div className="mt-10 rounded-2xl border border-border bg-card p-8 text-center">
+            <p className="text-muted-foreground">Abhi koi board exam batch available nahi hai.</p>
+            <Link to="/courses" className="mt-4 inline-block text-primary font-medium hover:underline">
+              Courses page par jaayein
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-            {tracks.map((t) => {
-              const exploreHref = t.course_id
-                ? `/courses/${t.course_id}`
-                : t.route ?? `/courses?track=${t.slug}`;
-              const demoHref = t.route ? `${t.route}#free-demo` : `/courses?track=${t.slug}&demo=1`;
-              const ribbon = ribbonFor(`${t.badge} ${t.title}`);
-              return (
-                <article
-                  key={t.id}
-                  className="group relative flex flex-col rounded-2xl border border-border bg-card p-5 pt-6 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary/40"
-                >
-                  {/* Top gradient ribbon — per-exam color */}
-                  <div
-                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ribbon}`}
-                    aria-hidden
-                  />
-
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`inline-flex items-center gap-1 rounded-full text-primary-foreground text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 bg-gradient-to-r ${ribbon}`}>
-                      {t.badge}
+          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {tracks.map((track) => (
+              <Link
+                key={track.id}
+                to={`/buy-course/${track.id}`}
+                onClick={() => void selectionHaptic()}
+                className="group relative flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
+              >
+                <div className={`h-2 w-full bg-gradient-to-r ${ribbonFor(track.badge)}`} />
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
+                      {track.badge}
                     </span>
-                    {t.seats && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent">
-                        <Users className="h-3 w-3" />
-                        {t.seats}
+                    <CountdownPill target={track.registration_deadline} />
+                  </div>
+
+                  <h3 className="mt-4 text-lg font-bold text-foreground line-clamp-2">{track.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{track.short_description}</p>
+
+                  <div className="mt-5 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    {track.duration_weeks && (
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" aria-hidden />
+                        {track.duration_weeks} weeks
+                      </span>
+                    )}
+                    {track.total_lessons && (
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+                        {track.total_lessons} lessons
+                      </span>
+                    )}
+                    {track.language && (
+                      <span className="inline-flex items-center gap-1">
+                        <Languages className="h-3.5 w-3.5" aria-hidden />
+                        {track.language}
+                      </span>
+                    )}
+                    {track.enrolled_count !== undefined && (
+                      <span className="inline-flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5" aria-hidden />
+                        {track.enrolled_count} enrolled
                       </span>
                     )}
                   </div>
 
-                  <h3
-                    className="font-serif text-lg text-foreground leading-snug mb-1"
-                    style={{ fontFamily: "var(--font-serif)" }}
-                  >
-                    {t.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-2">by {t.faculty}</p>
-                  {t.start_date && (
-                    <div className="mb-2"><CountdownPill startDate={t.start_date} /></div>
-                  )}
-                  <p className="text-sm text-foreground/80 leading-relaxed mb-4 line-clamp-2">{t.short}</p>
-
-                  <ul className="space-y-1.5 mb-4 text-xs text-muted-foreground">
-                    {t.start_date && <li className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5" /> {t.start_date}</li>}
-                    {t.duration && <li className="flex items-center gap-2"><Clock className="h-3.5 w-3.5" /> {t.duration}</li>}
-                    {t.language && <li className="flex items-center gap-2"><Languages className="h-3.5 w-3.5" /> {t.language}</li>}
-                  </ul>
-
-                  {t.price_effective && (
-                    <div className="flex items-baseline gap-2 mb-4 tabular-nums">
-                      <span className="text-lg font-bold text-foreground">₹{t.price_effective}</span>
-                      {t.price_mrp && t.price_mrp > t.price_effective && (
-                        <>
-                          <span className="text-xs text-muted-foreground line-through">₹{t.price_mrp}</span>
-                          <span className="text-[11px] font-semibold text-accent">
-                            {Math.round((1 - t.price_effective / t.price_mrp) * 100)}% off
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-auto flex items-center gap-2">
-                    <Link
-                      to={exploreHref}
-                      onClick={() => { void tapHaptic("light"); }}
-                      className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-primary text-primary-foreground text-sm font-semibold h-10 px-3 hover:bg-primary/90 active:scale-[0.97] transition-transform duration-150 ease-out"
-                    >
-                      {t.course_id ? "Buy now" : "Explore"}
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-                    <Link
-                      to={demoHref}
-                      onClick={() => { void selectionHaptic(); }}
-                      className="inline-flex items-center justify-center rounded-xl border border-border text-foreground text-xs font-semibold h-10 px-3 hover:bg-muted active:scale-[0.97] transition-transform duration-150 ease-out"
-                    >
-                      Free demo
-                    </Link>
+                  <div className="mt-6 flex items-center justify-between">
+                    <span className="text-lg font-extrabold text-foreground">
+                      ₹{track.discounted_price ?? track.price}
+                    </span>
+                    {track.discounted_price && track.discounted_price < track.price && (
+                      <span className="text-sm text-muted-foreground line-through">₹{track.price}</span>
+                    )}
                   </div>
-                </article>
-              );
-            })}
+
+                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                    <span className="text-sm font-medium text-primary group-hover:underline">
+                      Enroll karein
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>
@@ -137,4 +132,3 @@ const ExamTracks = memo(() => {
 
 ExamTracks.displayName = "ExamTracks";
 export default ExamTracks;
-
