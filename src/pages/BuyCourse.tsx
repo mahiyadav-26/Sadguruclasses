@@ -396,8 +396,14 @@ const BuyCourse = () => {
           return;
         }
         if (e instanceof RazorpayLaunchTimeoutError) {
-          void notifyError();
-          toast.error("Payment screen didn't open. Please update the app and try again. If money was deducted, enrollment will happen automatically.");
+          // The native sheet never appeared. Instead of dead-ending the
+          // purchase with an "update the app" message, silently retry through
+          // the in-app web checkout so the user can always pay.
+          logger.warn("Native Razorpay sheet did not open — falling back to web checkout");
+          toast.info("Payment screen khul nahi payi — browser checkout se khol rahe hain…");
+          if (isMountedRef.current) { setIsRazorpayLoading(false); setPayPhase(null); }
+          await handleRazorpayPayment({ forceWeb: true });
+          return;
         } else if (e instanceof RazorpayCancelledError) {
           toast.info("Payment cancelled. You can try again whenever you're ready.");
         } else if (e instanceof RazorpayNativeError) {
