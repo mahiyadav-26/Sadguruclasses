@@ -14,6 +14,7 @@ import LeadForm from "../components/Landing/LeadForm";
 import Testimonials from "../components/Landing/Testimonials";
 import Footer from "../components/Landing/Footer";
 import WhatsAppButton from "../components/common/WhatsAppButton";
+import FloatingAuthButton from "../components/common/FloatingAuthButton";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Index() {
@@ -66,6 +67,7 @@ export default function Index() {
       </main>
       <Footer ref={footerRef} />
       {!user && <WhatsAppButton />}
+      <FloatingAuthButton />
     </div>
   );
 }
