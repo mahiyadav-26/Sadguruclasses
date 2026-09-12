@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAdminEnrollment } from "../hooks/useAdminEnrollment";
 import { openRazorpayCheckout, formatRazorpayError, buildRazorpayPrefill, UPI_FIRST_CHECKOUT_CONFIG, type RazorpaySuccessResponse } from "../utils/razorpay";
-import { openNativeRazorpayCheckout, RazorpayCancelledError, RazorpayNativeError } from "../utils/razorpayNative";
+import { openNativeRazorpayCheckout, RazorpayCancelledError, RazorpayNativeError, RazorpayBridgeMissingError, RazorpayLaunchTimeoutError } from "../utils/razorpayNative";
 import { invokePaymentFunction, recoverEnrollment } from "../utils/paymentApi";
 import { tapMedium, notifySuccess, notifyError } from "../lib/nativeChrome";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -38,6 +38,11 @@ const BuyCourse = () => {
 
   const [step, setStep] = useState<"details" | "razorpay-success">("details");
   const [isRazorpayLoading, setIsRazorpayLoading] = useState(false);
+  // Coarse progress for the CTA label: "preparing" = creating the Razorpay
+  // order, "opening" = waiting for the payment sheet to appear. The button
+  // stays locked across BOTH phases so an impatient double-tap can never
+  // start a second checkout attempt.
+  const [payPhase, setPayPhase] = useState<null | "preparing" | "opening">(null);
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [adminAutoEnrolled, setAdminAutoEnrolled] = useState(false);
@@ -281,7 +286,13 @@ const BuyCourse = () => {
       return;
     }
 
+    // Re-entrancy guard: one tap === one payment attempt. Without this, every
+    // extra tap while the sheet was still opening minted another Razorpay
+    // order, which is how the orders table filled up with orphan rows.
+    if (isRazorpayLoading) return;
+
     setIsRazorpayLoading(true);
+    setPayPhase("preparing");
     const idempotency_key = idemKeyFor(user.id, String(courseId));
     let orderData: any;
     try {
@@ -311,14 +322,18 @@ const BuyCourse = () => {
           clearIdemKey(user.id, String(courseId));
           navigate(`/my-courses/${courseId}?payment=success`, { replace: true, state: { justPurchased: Number(courseId) } });
           setIsRazorpayLoading(false);
+          setPayPhase(null);
           return;
         }
       }
       toast.error(error?.message || "Failed to initiate payment. Please try again.");
       setIsRazorpayLoading(false);
+      setPayPhase(null);
       return;
     }
-    setIsRazorpayLoading(false);
+    // NOTE: deliberately still locked. The button is released only once the
+    // payment sheet has been dismissed, verified, or has failed to open.
+    setPayPhase("opening");
 
     // Razorpay theme.color expects a hex string. Read the live --primary token
     // and convert HSL → hex so brand recolors flow through without a code edit.
@@ -372,7 +387,18 @@ const BuyCourse = () => {
         const resp = await openNativeRazorpayCheckout(sharedOpts);
         await verifyRazorpayPayment(resp);
       } catch (e: any) {
-        if (e instanceof RazorpayCancelledError) {
+        if (e instanceof RazorpayBridgeMissingError) {
+          // Old APK without the native bridge — silently use the in-app web
+          // checkout instead of dead-ending the purchase.
+          logger.warn("Native Razorpay bridge missing — falling back to web checkout");
+          if (isMountedRef.current) { setIsRazorpayLoading(false); setPayPhase(null); }
+          await handleRazorpayPayment({ forceWeb: true });
+          return;
+        }
+        if (e instanceof RazorpayLaunchTimeoutError) {
+          void notifyError();
+          toast.error("Payment screen didn't open. Please update the app and try again. If money was deducted, enrollment will happen automatically.");
+        } else if (e instanceof RazorpayCancelledError) {
           toast.info("Payment cancelled. You can try again whenever you're ready.");
         } else if (e instanceof RazorpayNativeError) {
           // Structured Razorpay failure — pass fields straight through so the
@@ -391,7 +417,7 @@ const BuyCourse = () => {
       } finally {
         // Defense-in-depth: never leave the CTA stuck in "Processing…" if any
         // branch above threw synchronously after we cleared the initial spinner.
-        if (isMountedRef.current) setIsRazorpayLoading(false);
+        if (isMountedRef.current) { setIsRazorpayLoading(false); setPayPhase(null); }
       }
       return;
     }
@@ -422,6 +448,8 @@ const BuyCourse = () => {
     } catch (error: any) {
       logger.error("Razorpay open error:", error);
       toast.error(error?.message || "Failed to open checkout. Please try again.");
+    } finally {
+      if (isMountedRef.current) { setIsRazorpayLoading(false); setPayPhase(null); }
     }
   };
 
@@ -658,7 +686,7 @@ const BuyCourse = () => {
                       {isRazorpayLoading ? (
                         <>
                           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          Processing…
+                          {payPhase === "opening" ? "Opening payment…" : "Preparing…"}
                         </>
                       ) : (
                         <>
