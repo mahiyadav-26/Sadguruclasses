@@ -55,7 +55,7 @@ export class RazorpayLaunchTimeoutError extends Error {
 }
 
 /** How long we wait for the native sheet before declaring it stuck. */
-export const NATIVE_LAUNCH_TIMEOUT_MS = 8000;
+export const NATIVE_LAUNCH_TIMEOUT_MS = 5000;
 
 /**
  * Grace period after the user comes back to the app. If the plugin still has
