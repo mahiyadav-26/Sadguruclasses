@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useMenuFeatureFlags, type MenuFeatureFlag } from "@/hooks/useMenuFeatureFlags";
 import { toast } from "sonner";
 import { tapHaptic, selectionHaptic } from "@/lib/native/haptics";
 import logo from "../../assets/branding/nb-mark.webp";
@@ -19,6 +20,7 @@ interface MenuItem {
   label: string;
   path: string;
   adminOrTeacher?: boolean;
+  menuFlag?: MenuFeatureFlag;
 }
 
 const menuItems: MenuItem[] = [
@@ -27,14 +29,14 @@ const menuItems: MenuItem[] = [
   { icon: BookOpen, label: "Courses", path: "/courses" },
   { icon: Library, label: "Books", path: "/books" },
   { icon: Download, label: "Downloads", path: "/downloads" },
-  { icon: Video, label: "Doubt Sessions", path: "/doubts" },
+  { icon: Video, label: "Doubt Sessions", path: "/doubts", menuFlag: "doubts" },
   
   { icon: Bell, label: "Notices", path: "/notices" },
-  { icon: Users, label: "Community", path: "/community" },
+  { icon: Users, label: "Community", path: "/community", menuFlag: "community" },
   { icon: Users, label: "Students", path: "/students", adminOrTeacher: true },
   { icon: Calendar, label: "Attendance", path: "/attendance", adminOrTeacher: true },
-  { icon: FileText, label: "Reports", path: "/reports" },
-  { icon: MessageCircle, label: "Messages", path: "/messages" },
+  { icon: FileText, label: "Reports", path: "/reports", menuFlag: "reports" },
+  { icon: MessageCircle, label: "Messages", path: "/messages", menuFlag: "messages" },
   { icon: User, label: "Profile", path: "/profile" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
@@ -52,8 +54,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     navigate("/");
   };
 
+  const menuFlags = useMenuFeatureFlags();
+  const staffBypass = isAdmin || isTeacher;
+
   const visibleItems = menuItems.filter(item => {
-    if (item.adminOrTeacher) return isAdmin || isTeacher;
+    if (item.adminOrTeacher) return staffBypass;
+    // Admin-controlled section switches. Staff always see them; students only
+    // while the flag is ON (unset / still loading counts as ON).
+    if (item.menuFlag && !staffBypass && !menuFlags.isLoading && !menuFlags[item.menuFlag]) return false;
     return true;
   });
 

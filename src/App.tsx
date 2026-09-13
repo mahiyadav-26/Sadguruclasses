@@ -130,6 +130,8 @@ const AdminBatchMonitor = lazyWithRetry(() => import("./pages/AdminBatchMonitor"
 // Lazy-load ChatWidget (not needed at first paint)
 const ChatWidget = lazyWithRetry(() => import("./components/chat/ChatWidget"));
 import { isPathAllowed as isChatWidgetPathAllowed } from "./components/chat/chatWidgetRoutes";
+import { useLessonFeatureFlag } from "./hooks/useLessonFeatureFlags";
+import MenuFeatureGate from "./components/common/MenuFeatureGate";
 
 // Back button handler for Android/Capacitor
 const BackButtonHandler = () => {
@@ -206,6 +208,8 @@ const NativeChromeInit = () => {
 const DeferredChatWidget = () => {
   const location = useLocation();
   const [ready, setReady] = useState(false);
+  // Admin switch (Admin Panel → Lesson Features → Sadguru Agent). Defaults ON.
+  const agentEnabled = useLessonFeatureFlag("sadguruAgent");
 
   useEffect(() => {
     if (!isChatWidgetPathAllowed(location.pathname)) return;
@@ -219,6 +223,7 @@ const DeferredChatWidget = () => {
     return () => window.clearTimeout(timer);
   }, [location.pathname]);
 
+  if (!agentEnabled) return null;
   if (!ready || !isChatWidgetPathAllowed(location.pathname)) return null;
   return (
     <Suspense fallback={<div aria-hidden className="h-0 w-0" />}>
@@ -391,20 +396,20 @@ const App = () => (
                     <Route path="/live/:sessionId" element={<ProtectedRoute element={<ErrorBoundary fallbackTitle="Live class failed to load"><LiveClass /></ErrorBoundary>} />} />
                     <Route path="/teacher/live/:sessionId" element={<ProtectedRoute element={<TeacherLiveView />} />} />
                     <Route path="/attendance" element={<ProtectedRoute element={<Attendance />} />} />
-                    <Route path="/reports" element={<ProtectedRoute element={<Reports />} />} />
+                    <Route path="/reports" element={<ProtectedRoute element={<MenuFeatureGate flag="reports" label="Reports"><Reports /></MenuFeatureGate>} />} />
                     <Route path="/students" element={<ProtectedRoute element={<Students />} />} />
-                    <Route path="/messages" element={<ProtectedRoute element={<Messages />} />} />
+                    <Route path="/messages" element={<ProtectedRoute element={<MenuFeatureGate flag="messages" label="Messages"><Messages /></MenuFeatureGate>} />} />
                     <Route path="/profile" element={<ProtectedRoute element={<Profile />} />} />
                     <Route path="/settings" element={<ProtectedRoute element={<Settings />} />} />
                     <Route path="/timetable" element={<ProtectedRoute element={<Timetable />} />} />
                     <Route path="/books" element={<ProtectedRoute element={<Books />} />} />
                     <Route path="/notices" element={<ProtectedRoute element={<Notices />} />} />
-                    <Route path="/community" element={<ProtectedRoute element={<Community />} />} />
+                    <Route path="/community" element={<ProtectedRoute element={<MenuFeatureGate flag="community" label="Community"><Community /></MenuFeatureGate>} />} />
                     <Route path="/materials" element={<ProtectedRoute element={<Materials />} />} />
                     <Route path="/syllabus" element={<ProtectedRoute element={<Syllabus />} />} />
                     <Route path="/downloads" element={<ProtectedRoute element={<Downloads />} />} />
                     <Route path="/library" element={<ProtectedRoute element={<Library />} />} />
-                    <Route path="/doubts" element={<ProtectedRoute element={<Doubts />} />} />
+                    <Route path="/doubts" element={<ProtectedRoute element={<MenuFeatureGate flag="doubts" label="Doubt Sessions"><Doubts /></MenuFeatureGate>} />} />
                     <Route path="/debug/back-button" element={<BackButtonDebug />} />
                     
                     <Route path="*" element={<NotFound />} />

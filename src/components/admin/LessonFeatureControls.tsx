@@ -48,6 +48,12 @@ const GROUPS: { title: string; flags: { key: LessonFeatureFlag; label: string; d
       { key: "readerAutoScroll", label: "Auto-scroll on PDF reader", description: "PDF reader ka auto-scroll floating button + speed sheet." },
     ],
   },
+  {
+    title: "Sadguru Agent",
+    flags: [
+      { key: "sadguruAgent", label: "Sadguru Agent (floating button)", description: "OFF karne par poore app se Sadguru Agent ka floating button hat jayega." },
+    ],
+  },
 ];
 
 export default function LessonFeatureControlsManager() {

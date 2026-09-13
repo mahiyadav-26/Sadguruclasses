@@ -24,6 +24,7 @@ export const LESSON_FEATURE_KEYS = {
   pdfDownload: "lesson_pdf_download",
   notesAutoScroll: "lesson_notes_autoscroll",
   readerAutoScroll: "lesson_reader_autoscroll",
+  sadguruAgent: "sadguru_agent_enabled",
 } as const;
 
 export type LessonFeatureFlag = keyof typeof LESSON_FEATURE_KEYS;
@@ -45,6 +46,7 @@ export const LESSON_FEATURE_DEFAULTS: LessonFeatureFlags = {
   pdfDownload: true,
   notesAutoScroll: true,
   readerAutoScroll: true,
+  sadguruAgent: true,
 };
 
 export const LESSON_FEATURE_QUERY_KEY = ["site_settings", "lesson_features"] as const;
