@@ -1,7 +1,7 @@
 {
   "name": "sadguru-coaching-classes",
   "private": true,
-  "version": "1.5.5",
+  "version": "1.5.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,8 +14,9 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "guard:all": "npm run guard:design && npm run guard:console",
-    "guard:design": "node scripts/design-token-guard.cjs",
-    "guard:console": "node scripts/console-usage-guard.cjs",
+    "guard:design": "node scripts/check-design-tokens.mjs",
+    "guard:console": "node scripts/check-console-usage.mjs",
+    "check:lockfile": "node scripts/check-lockfile-registry.mjs",
     "fix:lockfile": "node scripts/fix-lockfile-registry.mjs",
     "verify:capacitor-deps": "node scripts/verify-capacitor-deps.mjs"
   },
