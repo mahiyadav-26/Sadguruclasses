@@ -6,6 +6,8 @@ declare global {
   }
 }
 
+export const RAZORPAY_SCRIPT_TIMEOUT_MS = 8000;
+
 export const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (window.Razorpay) {
@@ -14,8 +16,19 @@ export const loadRazorpayScript = (): Promise<boolean> => {
     }
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
+    let settled = false;
+    const finish = (loaded: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve(loaded);
+    };
+    const timeoutId = window.setTimeout(() => {
+      script.remove();
+      finish(false);
+    }, RAZORPAY_SCRIPT_TIMEOUT_MS);
+    script.onload = () => finish(true);
+    script.onerror = () => finish(false);
     document.body.appendChild(script);
   });
 };
@@ -117,7 +130,7 @@ export const openRazorpayCheckout = async (options: RazorpayOptions): Promise<vo
   const loaded = await loadRazorpayScript();
   if (!loaded) {
     addBreadcrumb('payment', 'razorpay:sdk-load-failed', { order_id: options.order_id });
-    const err = new Error('Failed to load Razorpay checkout. Check your internet connection.');
+    const err = new Error('Payment screen load nahi hui. Internet check karke dobara try karein.');
     reportError(err, { surface: 'razorpay.load', order_id: options.order_id });
     throw err;
   }
