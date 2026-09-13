@@ -270,7 +270,7 @@ const BuyCourse = () => {
    *   **test mode** has no real UPI PSP handles, so the native sheet hides the
    *   UPI tab entirely while the web checkout still renders UPI (collect/VPA).
    */
-  const handleRazorpayPayment = async (opts?: { forceWeb?: boolean }) => {
+  const handleRazorpayPayment = async (opts?: { forceWeb?: boolean; existingOrder?: any }) => {
     if (!user) {
       toast.error("Please login first");
       navigate("/login", { state: { from: location.pathname + location.search } });
@@ -289,17 +289,20 @@ const BuyCourse = () => {
     // Re-entrancy guard: one tap === one payment attempt. Without this, every
     // extra tap while the sheet was still opening minted another Razorpay
     // order, which is how the orders table filled up with orphan rows.
-    if (isRazorpayLoading) return;
+    const isFallbackAttempt = Boolean(opts?.forceWeb && opts.existingOrder);
+    if (isRazorpayLoading && !isFallbackAttempt) return;
 
     setIsRazorpayLoading(true);
-    setPayPhase("preparing");
+    setPayPhase(opts?.forceWeb ? "opening" : "preparing");
     const idempotency_key = idemKeyFor(user.id, String(courseId));
-    let orderData: any;
+    let orderData: any = opts?.existingOrder;
     try {
-      orderData = await invokePaymentFunction<any>("create-razorpay-order", {
-        course_id: Number(courseId),
-        idempotency_key,
-      });
+      if (!orderData) {
+        orderData = await invokePaymentFunction<any>("create-razorpay-order", {
+          course_id: Number(courseId),
+          idempotency_key,
+        });
+      }
       setPaymentMode(orderData?.mode === "test" ? "test" : orderData?.mode === "live" ? "live" : null);
       logger.info("Razorpay order ready", {
         mode: orderData?.mode,
@@ -391,8 +394,7 @@ const BuyCourse = () => {
           // Old APK without the native bridge — silently use the in-app web
           // checkout instead of dead-ending the purchase.
           logger.warn("Native Razorpay bridge missing — falling back to web checkout");
-          if (isMountedRef.current) { setIsRazorpayLoading(false); setPayPhase(null); }
-          await handleRazorpayPayment({ forceWeb: true });
+          await handleRazorpayPayment({ forceWeb: true, existingOrder: orderData });
           return;
         }
         if (e instanceof RazorpayLaunchTimeoutError) {
@@ -401,8 +403,7 @@ const BuyCourse = () => {
           // the in-app web checkout so the user can always pay.
           logger.warn("Native Razorpay sheet did not open — falling back to web checkout");
           toast.info("Payment screen khul nahi payi — browser checkout se khol rahe hain…");
-          if (isMountedRef.current) { setIsRazorpayLoading(false); setPayPhase(null); }
-          await handleRazorpayPayment({ forceWeb: true });
+          await handleRazorpayPayment({ forceWeb: true, existingOrder: orderData });
           return;
         } else if (e instanceof RazorpayCancelledError) {
           toast.info("Payment cancelled. You can try again whenever you're ready.");
