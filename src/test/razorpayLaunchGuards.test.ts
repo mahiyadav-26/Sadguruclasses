@@ -24,6 +24,7 @@ import {
   onWebViewBackgrounded,
   type NativeRazorpayOptions,
 } from "@/utils/razorpayNative";
+import { loadRazorpayScript, RAZORPAY_SCRIPT_TIMEOUT_MS } from "@/utils/razorpay";
 
 const opts: NativeRazorpayOptions = {
   key: "rzp_live_abc123",
@@ -119,5 +120,14 @@ describe("onWebViewBackgrounded", () => {
     stop();
     window.dispatchEvent(new Event("blur"));
     expect(cb).not.toHaveBeenCalled();
+  });
+});
+
+describe("web checkout launch guards", () => {
+  it("stops waiting when checkout.js never loads", async () => {
+    vi.useFakeTimers();
+    const promise = loadRazorpayScript();
+    await vi.advanceTimersByTimeAsync(RAZORPAY_SCRIPT_TIMEOUT_MS + 10);
+    await expect(promise).resolves.toBe(false);
   });
 });
