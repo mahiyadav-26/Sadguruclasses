@@ -42,6 +42,18 @@ public class RazorpayNativePlugin extends Plugin {
      */
     private static PluginCall pendingCall;
 
+    private static void rejectPending(String code, String description) {
+        final PluginCall call = pendingCall;
+        pendingCall = null;
+        if (call == null) return;
+        call.setKeepAlive(false);
+        call.reject(
+            "{\"code\":" + JSONObject.quote(code)
+                + ",\"description\":" + JSONObject.quote(description) + "}",
+            code
+        );
+    }
+
     @PluginMethod
     public void open(PluginCall call) {
         final Activity activity = getActivity();
@@ -57,13 +69,7 @@ public class RazorpayNativePlugin extends Plugin {
         }
 
         // Reject any stale call rather than leaking it.
-        if (pendingCall != null) {
-            pendingCall.reject(
-                "{\"code\":\"SUPERSEDED\",\"description\":\"A new checkout was started\"}",
-                "SUPERSEDED"
-            );
-            pendingCall = null;
-        }
+        rejectPending("SUPERSEDED", "A new checkout was started");
 
         JSObject options = call.getData();
 
@@ -78,12 +84,27 @@ public class RazorpayNativePlugin extends Plugin {
 
             call.setKeepAlive(true);
             pendingCall = call;
-            checkout.open(activity, payload);
+            // Capacitor plugin methods may execute off the Android UI thread.
+            // Razorpay starts an Activity and must always be opened on it.
+            activity.runOnUiThread(() -> {
+                try {
+                    checkout.open(activity, payload);
+                } catch (Throwable t) {
+                    String msg = t.getMessage() == null ? "Unable to open checkout" : t.getMessage();
+                    rejectPending("OPEN_FAILED", msg);
+                }
+            });
         } catch (Exception e) {
-            pendingCall = null;
             String msg = e.getMessage() == null ? "Unable to open checkout" : e.getMessage();
-            call.reject("{\"code\":\"OPEN_FAILED\",\"description\":" + JSONObject.quote(msg) + "}", "OPEN_FAILED");
+            rejectPending("OPEN_FAILED", msg);
         }
+    }
+
+    /** Cancels the JS bridge call after its launch watchdog expires. */
+    @PluginMethod
+    public void cancel(PluginCall call) {
+        rejectPending("LAUNCH_CANCELLED", "Checkout launch was cancelled");
+        call.resolve();
     }
 
     /** Warms up Razorpay so the method list (incl. UPI apps) is ready on first open. */
@@ -119,6 +140,7 @@ public class RazorpayNativePlugin extends Plugin {
                         }
                         JSObject result = new JSObject();
                         result.put("response", response);
+                        call.setKeepAlive(false);
                         call.resolve(result);
                     }
 
@@ -134,6 +156,7 @@ public class RazorpayNativePlugin extends Plugin {
                             }
                         } catch (Exception ignored) {
                         }
+                        call.setKeepAlive(false);
                         call.reject(err.toString(), String.valueOf(code));
                     }
                 },
@@ -146,11 +169,13 @@ public class RazorpayNativePlugin extends Plugin {
                             err.put("description", "External wallet selected: " + walletName);
                         } catch (Exception ignored) {
                         }
+                        call.setKeepAlive(false);
                         call.reject(err.toString(), "EXTERNAL_WALLET");
                     }
                 });
         } catch (Throwable t) {
             String msg = t.getMessage() == null ? "Checkout result handling failed" : t.getMessage();
+            call.setKeepAlive(false);
             call.reject("{\"code\":\"RESULT_FAILED\",\"description\":" + JSONObject.quote(msg) + "}", "RESULT_FAILED");
         }
         return true;

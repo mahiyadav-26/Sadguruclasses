@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Keep the plugin loader out of the way — these tests cover the guards that
 // run *before* and *around* the native call, not the plugin itself.
 const openMock = vi.fn();
+const cancelMock = vi.fn();
 vi.mock("@/lib/native/razorpay", () => ({
-  loadRazorpayNative: async () => ({ open: openMock }),
+  loadRazorpayNative: async () => ({ open: openMock, cancel: cancelMock }),
 }));
 vi.mock("@/lib/sentry", () => ({ addBreadcrumb: vi.fn() }));
 
@@ -37,6 +38,7 @@ const opts: NativeRazorpayOptions = {
 
 beforeEach(() => {
   openMock.mockReset();
+  cancelMock.mockReset().mockResolvedValue(undefined);
   isPluginAvailable.mockReset().mockReturnValue(true);
 });
 
@@ -60,6 +62,7 @@ describe("native checkout launch guards", () => {
     const assertion = expect(promise).rejects.toBeInstanceOf(RazorpayLaunchTimeoutError);
     await vi.advanceTimersByTimeAsync(NATIVE_LAUNCH_TIMEOUT_MS + 10);
     await assertion;
+    expect(cancelMock).toHaveBeenCalledOnce();
   });
 
   it("disarms the watchdog once the sheet takes the foreground", async () => {

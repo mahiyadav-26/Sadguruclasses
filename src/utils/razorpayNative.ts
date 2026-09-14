@@ -354,7 +354,19 @@ export const openNativeRazorpayCheckout = async (
   } catch (e: any) {
     // Structural failures are re-thrown untouched so the caller can react
     // (fall back to web / show the "didn't open" message).
-    if (e instanceof RazorpayBridgeMissingError || e instanceof RazorpayLaunchTimeoutError) throw e;
+    if (e instanceof RazorpayLaunchTimeoutError) {
+      // The native promise can still be alive after Promise.race rejects. Clear
+      // its Android callback before the caller opens web checkout, otherwise a
+      // late native result can trigger a second payment/verification path.
+      try {
+        const RazorpayNative = await loadRazorpayNative();
+        await RazorpayNative.cancel();
+      } catch {
+        // Best effort for older APKs that do not expose cancel().
+      }
+      throw e;
+    }
+    if (e instanceof RazorpayBridgeMissingError) throw e;
     const msg = e?.message || e?.errorMessage || String(e ?? "");
     if (looksLikeCancel(msg)) throw new RazorpayCancelledError();
     // Preserve Razorpay's structured error (step / reason / code) so the

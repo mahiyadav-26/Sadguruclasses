@@ -11,6 +11,7 @@ export interface RazorpayNativeSuccess {
 
 export interface RazorpayNativePlugin {
   open(options: Record<string, unknown>): Promise<RazorpayNativeSuccess>;
+  cancel(): Promise<void>;
 }
 
 let cached: RazorpayNativePlugin | null = null;
